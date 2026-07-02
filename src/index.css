@@ -93,6 +93,73 @@ p {
   margin-top: 22px;
 }
 
+.menu-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.8fr);
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.auth-panel,
+.guest-panel,
+.game-info {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(18, 15, 13, 0.55);
+}
+
+.auth-panel h2,
+.guest-panel h2,
+.game-info h2 {
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.form {
+  display: grid;
+  gap: 10px;
+}
+
+.google-button {
+  width: 100%;
+  margin-bottom: 10px;
+  border-color: #d7d7d7;
+  background: #f8f8f8;
+  color: #222;
+}
+
+input {
+  min-height: 42px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #0e0c0a;
+  color: var(--ink);
+  font: inherit;
+}
+
+input:focus {
+  outline: 2px solid rgba(216, 161, 75, 0.42);
+  outline-offset: 1px;
+}
+
+.message {
+  margin: 10px 0 0;
+  color: var(--amber);
+  font-size: 14px;
+}
+
+.auth-switch {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.game-info {
+  margin-top: 18px;
+}
+
 .game-shell {
   width: min(1240px, 100%);
   min-height: 100vh;
@@ -102,6 +169,135 @@ p {
   grid-template-columns: minmax(0, 1fr) 330px;
   grid-template-rows: auto 1fr;
   gap: 16px;
+}
+
+.jumpscare {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.24) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.42) 0 3px, transparent 3px 7px),
+    radial-gradient(circle at 50% 42%, #fff7e8 0 5%, #d6b997 9%, #9f302d 22%, #050403 58%);
+  animation: jumpscareFlash 0.08s steps(2) infinite, jumpscareShake 0.055s infinite, jumpscareTunnel 0.42s ease-in infinite;
+}
+
+.jumpscare::before {
+  content: "";
+  position: absolute;
+  inset: -32%;
+  background:
+    radial-gradient(circle at 50% 48%, transparent 0 18%, rgba(0, 0, 0, 0.96) 31%, transparent 33%),
+    conic-gradient(from 20deg, rgba(255, 247, 232, 0.85), rgba(159, 48, 45, 0.65), rgba(0, 0, 0, 0.95), rgba(255, 247, 232, 0.85));
+  mix-blend-mode: screen;
+  animation: jumpscareSpin 0.28s linear infinite;
+}
+
+.jumpscare::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 247, 232, 0.16) 0 8px, transparent 8px 16px),
+    repeating-linear-gradient(0deg, rgba(159, 48, 45, 0.18) 0 8px, transparent 8px 16px),
+    linear-gradient(90deg, transparent 0 18%, rgba(255, 247, 232, 0.2) 18% 22%, transparent 22% 55%, rgba(159, 48, 45, 0.22) 55% 61%, transparent 61%),
+    radial-gradient(ellipse at 18% 46%, rgba(0, 0, 0, 0.96) 0 5%, transparent 12%),
+    radial-gradient(ellipse at 82% 46%, rgba(0, 0, 0, 0.96) 0 5%, transparent 12%),
+    radial-gradient(circle at 50% 58%, transparent 0 30%, rgba(0, 0, 0, 0.88) 58%);
+  background-size: 16px 16px, 16px 16px, 96px 100%, auto, auto, auto;
+  mix-blend-mode: hard-light;
+  pointer-events: none;
+  animation: jumpscarePulse 0.18s steps(2) infinite, jumpscarePixels 0.16s steps(2) infinite;
+}
+
+.jumpscare p {
+  position: absolute;
+  bottom: 7%;
+  margin: 0;
+  color: #fff7e8;
+  font-size: clamp(28px, 7vw, 96px);
+  font-weight: 1000;
+  text-align: center;
+  text-shadow: 0 0 10px #000, 0 0 28px #000, 0 0 46px #9f302d;
+  transform: rotate(-1deg);
+  animation: jumpscareText 0.12s steps(2) infinite;
+}
+
+.jumpscare-face {
+  position: relative;
+  width: min(112vw, 820px);
+  aspect-ratio: 0.86;
+  border-radius: 48% 48% 38% 38%;
+  background: #050403;
+  box-shadow:
+    0 0 120px #000,
+    0 0 220px rgba(159, 48, 45, 0.74),
+    inset 0 -130px 160px rgba(159, 48, 45, 0.56),
+    inset 0 80px 110px rgba(255, 247, 232, 0.16);
+  transform: scale(1.28);
+  image-rendering: pixelated;
+  animation: jumpscareFace 0.22s steps(2) infinite;
+}
+
+.jumpscare-face::before,
+.jumpscare-face::after {
+  content: "";
+  position: absolute;
+  top: 48%;
+  width: 34%;
+  height: 18%;
+  border-radius: 50%;
+  background: #050403;
+  box-shadow: 0 0 44px #000, inset 0 0 0 12px #fff7e8;
+}
+
+.jumpscare-face::before {
+  left: -18%;
+  transform: rotate(26deg);
+}
+
+.jumpscare-face::after {
+  right: -18%;
+  transform: rotate(-26deg);
+}
+
+.jumpscare-eye,
+.jumpscare-mouth {
+  position: absolute;
+  display: block;
+  background: #f6edda;
+  box-shadow: 0 0 22px #f6edda, 0 0 58px #f6edda, 0 0 92px #9f302d;
+}
+
+.jumpscare-eye {
+  top: 25%;
+  width: 20%;
+  height: 13%;
+  border-radius: 48% 48% 8% 8%;
+}
+
+.jumpscare-eye:first-child {
+  left: 22%;
+  transform: rotate(14deg);
+}
+
+.jumpscare-eye:nth-child(2) {
+  right: 22%;
+  transform: rotate(-14deg);
+}
+
+.jumpscare-mouth {
+  left: 27%;
+  bottom: 13%;
+  width: 46%;
+  height: 36%;
+  border-radius: 44% 44% 50% 50%;
+  background: #0a0504;
+  border: 14px solid #f6edda;
+  box-shadow: inset 0 34px 0 rgba(159, 48, 45, 0.75), 0 0 80px #9f302d;
 }
 
 .game-title {
@@ -640,8 +836,98 @@ p {
   }
 }
 
+@keyframes jumpscareFlash {
+  50% {
+    filter: invert(1) contrast(2.2) saturate(0);
+  }
+}
+
+@keyframes jumpscareShake {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1.02);
+  }
+
+  25% {
+    transform: translate(18px, -15px) scale(1.07) rotate(0.4deg);
+  }
+
+  50% {
+    transform: translate(-16px, 18px) scale(1.05) rotate(-0.5deg);
+  }
+
+  75% {
+    transform: translate(13px, 9px) scale(1.1) rotate(0.3deg);
+  }
+}
+
+@keyframes jumpscareSpin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes jumpscareTunnel {
+  0%,
+  100% {
+    filter: contrast(1.45) saturate(1.55);
+  }
+
+  50% {
+    filter: contrast(2.8) saturate(0.45) brightness(1.35);
+  }
+}
+
+@keyframes jumpscarePulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes jumpscarePixels {
+  0%,
+  100% {
+    background-position: 0 0, 0 0, 0 0, center, center, center;
+  }
+
+  50% {
+    background-position: 16px 0, 0 16px, 32px 0, center, center, center;
+  }
+}
+
+@keyframes jumpscareFace {
+  0%,
+  100% {
+    transform: scale(1.18) translateY(2%);
+  }
+
+  50% {
+    transform: scale(1.42) translateY(-4%);
+  }
+}
+
+@keyframes jumpscareText {
+  0%,
+  100% {
+    transform: translateX(-8px) rotate(-1deg);
+  }
+
+  50% {
+    transform: translateX(10px) rotate(1deg);
+  }
+}
+
 @media (max-width: 980px) {
   .game-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .menu-layout {
     grid-template-columns: 1fr;
   }
 

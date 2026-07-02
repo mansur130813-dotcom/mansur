@@ -1,14 +1,36 @@
-import { roomSize, type HotspotId, type Point } from '../gameData';
+import { roomSize, type DroppedItem, type HotspotId, type Point } from '../gameData';
 import { ThreeArchive } from './ThreeArchive';
 
-type ActionTarget = HotspotId | 'deskSort' | 'deskOpen';
+type ActionTarget =
+  | HotspotId
+  | 'boxesUnpack'
+  | 'deskSort'
+  | 'deskOpen'
+  | 'coffeeMirror'
+  | 'shelvesDust'
+  | 'hallListen'
+  | 'cameraTune'
+  | 'redSeal'
+  | 'case417Read'
+  | 'flashlightBeam'
+  | 'incineratorBurn'
+  | 'exitUnlock'
+  | 'gateRun'
+  | 'keyTake'
+  | 'vacuumUnlock'
+  | 'vacuumSuck';
 
 type Props = {
   player: Point;
   lightOn: boolean;
-  finalMode: boolean;
   records: number;
   fear: number;
+  coffeeDrunk: boolean;
+  inventory: string[];
+  droppedItems: DroppedItem[];
+  shadowPoint: Point;
+  shadowVisible: boolean;
+  shadowAttacking: boolean;
   actionActive: boolean;
   actionTarget: ActionTarget | null;
   onMove: (dx: number, dy: number) => void;
@@ -19,9 +41,14 @@ type Props = {
 export function GameBoard({
   player,
   lightOn,
-  finalMode,
   records,
   fear,
+  coffeeDrunk,
+  inventory,
+  droppedItems,
+  shadowPoint,
+  shadowVisible,
+  shadowAttacking,
   actionActive,
   actionTarget,
   onMove,
@@ -36,8 +63,13 @@ export function GameBoard({
         <ThreeArchive
           player={player}
           lightOn={lightOn}
-          finalMode={finalMode}
           fear={fear}
+          coffeeDrunk={coffeeDrunk}
+          inventory={inventory}
+          droppedItems={droppedItems}
+          shadowPoint={shadowPoint}
+          shadowVisible={shadowVisible}
+          shadowAttacking={shadowAttacking}
           actionActive={actionActive}
           actionTarget={actionTarget}
           onViewYawChange={onViewYawChange}

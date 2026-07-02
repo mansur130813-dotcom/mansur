@@ -17,4 +17,3 @@ export function EndingScreen({ ending, onRestart }: Props) {
     </main>
   );
 }
-

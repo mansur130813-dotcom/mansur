@@ -1,6 +1,15 @@
 import { useRef, useState } from 'react';
 
-export type SoundCue = 'move' | 'interact' | 'paper' | 'camera' | 'blackout' | 'ending' | 'voiceAaa' | 'voiceCheck';
+export type SoundCue =
+  | 'move'
+  | 'interact'
+  | 'paper'
+  | 'camera'
+  | 'blackout'
+  | 'ending'
+  | 'scream'
+  | 'voiceAaa'
+  | 'voiceCheck';
 
 declare global {
   interface Window {
@@ -27,11 +36,81 @@ function makeOscillator(
   oscillator.stop(context.currentTime + duration);
 }
 
+function makeNoiseBlast(context: AudioContext, duration: number, gainValue: number) {
+  const sampleRate = context.sampleRate;
+  const buffer = context.createBuffer(1, Math.floor(sampleRate * duration), sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let index = 0; index < data.length; index += 1) {
+    const fade = 1 - index / data.length;
+    data[index] = (Math.random() * 2 - 1) * fade;
+  }
+
+  const source = context.createBufferSource();
+  const filter = context.createBiquadFilter();
+  const gain = context.createGain();
+  filter.type = 'bandpass';
+  filter.frequency.value = 2100;
+  filter.Q.value = 5.5;
+  gain.gain.setValueAtTime(gainValue, context.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
+  source.buffer = buffer;
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(context.destination);
+  source.start();
+  source.stop(context.currentTime + duration);
+}
+
+function makeImpact(context: AudioContext) {
+  const compressor = context.createDynamicsCompressor();
+  compressor.threshold.value = -28;
+  compressor.knee.value = 8;
+  compressor.ratio.value = 16;
+  compressor.attack.value = 0.003;
+  compressor.release.value = 0.18;
+  compressor.connect(context.destination);
+
+  const distortion = context.createWaveShaper();
+  const curve = new Float32Array(256);
+  for (let index = 0; index < curve.length; index += 1) {
+    const x = (index / 128) - 1;
+    curve[index] = Math.tanh(x * 8);
+  }
+  distortion.curve = curve;
+  distortion.oversample = '4x';
+  distortion.connect(compressor);
+
+  const hit = context.createOscillator();
+  const hitGain = context.createGain();
+  hit.type = 'square';
+  hit.frequency.setValueAtTime(96, context.currentTime);
+  hit.frequency.exponentialRampToValueAtTime(32, context.currentTime + 0.16);
+  hitGain.gain.setValueAtTime(0.34, context.currentTime);
+  hitGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.24);
+  hit.connect(hitGain);
+  hitGain.connect(distortion);
+  hit.start();
+  hit.stop(context.currentTime + 0.25);
+
+  const shriek = context.createOscillator();
+  const shriekGain = context.createGain();
+  shriek.type = 'sawtooth';
+  shriek.frequency.setValueAtTime(1850, context.currentTime);
+  shriek.frequency.exponentialRampToValueAtTime(3100, context.currentTime + 0.11);
+  shriekGain.gain.setValueAtTime(0.16, context.currentTime);
+  shriekGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.34);
+  shriek.connect(shriekGain);
+  shriekGain.connect(distortion);
+  shriek.start(context.currentTime + 0.015);
+  shriek.stop(context.currentTime + 0.36);
+}
+
 function speak(text: string) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'en-US';
+  utterance.lang = 'ru-RU';
   utterance.rate = 0.85;
   utterance.pitch = 0.75;
   utterance.volume = 0.8;
@@ -46,7 +125,7 @@ export function useGameSound() {
 
   function getContext() {
     const AudioCtor = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtor) throw new Error('Web Audio API is not supported in this browser.');
+    if (!AudioCtor) throw new Error('Web Audio API не поддерживается в этом браузере.');
     if (!contextRef.current) contextRef.current = new AudioCtor();
     return contextRef.current;
   }
@@ -85,8 +164,16 @@ export function useGameSound() {
     if (cue === 'camera') makeOscillator(context, 'square', 66, 0.035, 0.28);
     if (cue === 'blackout') makeOscillator(context, 'sawtooth', 31, 0.06, 0.5);
     if (cue === 'ending') makeOscillator(context, 'sine', 28, 0.08, 0.9);
-    if (cue === 'voiceAaa') speak('aaa');
-    if (cue === 'voiceCheck') speak('ok, let us check it');
+    if (cue === 'scream') {
+      makeImpact(context);
+      makeNoiseBlast(context, 0.95, 0.44);
+      makeNoiseBlast(context, 0.24, 0.28);
+      makeOscillator(context, 'sawtooth', 1620, 0.22, 0.58);
+      makeOscillator(context, 'square', 64, 0.24, 1.0);
+      makeOscillator(context, 'triangle', 560, 0.15, 0.72);
+    }
+    if (cue === 'voiceAaa') speak('а-а-а');
+    if (cue === 'voiceCheck') speak('хорошо, проверим');
   }
 
   return { enabled, start, stop, play };

@@ -7,6 +7,7 @@ type Props = {
   message: string;
   journal: string[];
   action: { label: string; progress: number } | null;
+  onDropInventory: () => void;
   cameraFeeds: CameraFeed[];
   cameraViewer: { open: boolean; index: number };
   onPreviousCamera: () => void;
@@ -22,6 +23,7 @@ export function Hud({
   message,
   journal,
   action,
+  onDropInventory,
   cameraFeeds,
   cameraViewer,
   onPreviousCamera,
@@ -69,6 +71,7 @@ export function Hud({
       <section className="panel">
         <h2>Инвентарь</h2>
         {inventory.length ? inventory.map((item) => <p key={item}>{item}</p>) : <p>Пусто</p>}
+        {inventory.length > 0 && <button type="button" className="quiet-button" onClick={onDropInventory}>Выбросить</button>}
       </section>
 
       <section className="panel message-panel">

@@ -8,9 +8,9 @@ import { useGameSound } from './hooks/useGameSound';
 
 const finalObjective = {
   night: 'Финал',
-  title: 'Закрыть смену',
-  hint: 'Красная папка — плохой финал. Урна — хороший. Выход откроется только с тремя скрытыми записями.',
-  target: 'exit' as const,
+  title: 'Выбери, чем закончится архив',
+  hint: 'Хорошая концовка: открой выходную дверь и выбеги через белые ворота. Плохая концовка: вскрой красную папку и останься в архиве.',
+  target: 'gate' as const,
   success: '',
   fear: 100,
 };
@@ -34,7 +34,8 @@ export default function App() {
     return (
       <MenuScreen
         soundEnabled={sound.enabled}
-        onStart={startGame}
+        onGuestStart={startGame}
+        onAuthenticated={startGame}
         onToggleSound={toggleSound}
       />
     );
@@ -54,9 +55,14 @@ export default function App() {
       <GameBoard
         player={game.player}
         lightOn={game.lightOn}
-        finalMode={game.finalMode}
         records={game.records}
         fear={game.fear}
+        coffeeDrunk={game.coffeeDrunk}
+        inventory={game.inventory}
+        droppedItems={game.droppedItems}
+        shadowPoint={game.shadowPoint}
+        shadowVisible={game.shadowVisible}
+        shadowAttacking={game.shadowAttacking}
         actionActive={Boolean(game.action)}
         actionTarget={game.action?.target ?? null}
         onMove={game.move}
@@ -71,6 +77,7 @@ export default function App() {
         message={game.message}
         journal={game.journal}
         action={game.action}
+        onDropInventory={game.dropInventory}
         cameraFeeds={game.cameraFeeds}
         cameraViewer={game.cameraViewer}
         onPreviousCamera={game.previousCamera}
@@ -78,6 +85,17 @@ export default function App() {
         onCloseCamera={game.closeCameraViewer}
         onConfirmCamera={game.confirmCameraFinding}
       />
+
+      {game.jumpscare && (
+        <div className="jumpscare" aria-live="assertive">
+          <div className="jumpscare-face">
+            <span className="jumpscare-eye" />
+            <span className="jumpscare-eye" />
+            <span className="jumpscare-mouth" />
+          </div>
+          <p>СИЛУЭТ ПОЙМАЛ ТЕБЯ</p>
+        </div>
+      )}
     </main>
   );
 }

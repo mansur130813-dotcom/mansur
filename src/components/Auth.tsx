@@ -1,26 +1,56 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-// Вход и регистрация по email + паролю. Это пример — Codex поможет улучшить (Google-вход и т.д.).
-export function Auth() {
+type Props = {
+  onAuthenticated: () => void;
+};
+
+export function Auth({ onAuthenticated }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted && data.session) onAuthenticated();
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) onAuthenticated();
+    });
+
+    return () => {
+      mounted = false;
+      data.subscription.unsubscribe();
+    };
+  }, [onAuthenticated]);
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setBusy(true);
     setMessage('');
+
     try {
-      const fn =
+      const { data, error } =
         mode === 'signup'
-          ? supabase.auth.signUp({ email, password })
-          : supabase.auth.signInWithPassword({ email, password });
-      const { error } = await fn;
-      if (error) setMessage(error.message);
-      else if (mode === 'signup') setMessage('Готово! Проверь почту, если нужна подтверждалка.');
+          ? await supabase.auth.signUp({ email, password })
+          : await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
+
+      if (data.session || mode === 'signin') {
+        onAuthenticated();
+        return;
+      }
+
+      setMessage('Аккаунт создан. Проверь почту, если Supabase попросит подтвердить email.');
     } catch {
       setMessage('Что-то пошло не так. Попробуй ещё раз.');
     } finally {
@@ -28,35 +58,56 @@ export function Auth() {
     }
   }
 
+  async function handleGoogleSignIn() {
+    setBusy(true);
+    setMessage('');
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+
+    if (error) {
+      setMessage(error.message);
+      setBusy(false);
+    }
+  }
+
   return (
-    <section className="card">
-      <h2>{mode === 'signin' ? 'Вход' : 'Регистрация'}</h2>
+    <section className="auth-panel">
+      <h2>{mode === 'signin' ? 'Вход по email' : 'Регистрация'}</h2>
+      <button type="button" className="google-button" onClick={handleGoogleSignIn} disabled={busy}>
+        {busy ? '...' : 'Войти через Google'}
+      </button>
       <form onSubmit={handleSubmit} className="form">
         <input
           type="email"
           placeholder="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(event) => setEmail(event.target.value)}
           required
         />
         <input
           type="password"
           placeholder="пароль (6+ символов)"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(event) => setPassword(event.target.value)}
           minLength={6}
           required
         />
         <button type="submit" disabled={busy}>
-          {busy ? '…' : mode === 'signin' ? 'Войти' : 'Создать аккаунт'}
+          {busy ? '...' : mode === 'signin' ? 'Войти и играть' : 'Создать аккаунт'}
         </button>
       </form>
       {message && <p className="message">{message}</p>}
       <button
-        className="ghost"
+        type="button"
+        className="quiet-button auth-switch"
         onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
       >
-        {mode === 'signin' ? 'Нет аккаунта? Зарегистрируйся' : 'Уже есть аккаунт? Войти'}
+        {mode === 'signin' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти'}
       </button>
     </section>
   );
