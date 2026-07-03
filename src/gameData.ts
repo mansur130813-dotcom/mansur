@@ -49,7 +49,7 @@ export const collisionRects: CollisionRect[] = [
   { x: 731, y: 48, width: 10, height: 88 },
   { x: 761, y: 48, width: 10, height: 88 },
   { x: 792, y: 48, width: 10, height: 88 },
-  { x: 350, y: 86, width: 92, height: 44 },
+  { x: 342, y: 166, width: 116, height: 50 },
   { x: 202, y: 420, width: 92, height: 62 },
   { x: 648, y: 426, width: 36, height: 22 },
   { x: 662, y: 450, width: 12, height: 20 },
@@ -62,6 +62,7 @@ export const collisionRects: CollisionRect[] = [
   { x: 569, y: 308, width: 8, height: 204 },
   { x: 516, y: 793, width: 38, height: 18 },
   { x: 386, y: 1158, width: 128, height: 8 },
+  { x: 0, y: 1176, width: 900, height: 164 },
 ];
 
 export const cameraFeeds: CameraFeed[] = [
@@ -93,15 +94,15 @@ export const cameraFeeds: CameraFeed[] = [
 
 export const hotspots: Record<HotspotId, Point & { label: string }> = {
   boxes: { x: 236, y: 448, label: 'Коробки' },
-  desk: { x: 385, y: 112, label: 'Стол' },
-  coffee: { x: 410, y: 112, label: 'Кофе' },
+  desk: { x: 400, y: 190, label: 'Стол' },
+  coffee: { x: 425, y: 190, label: 'Кофе' },
   switch: { x: 872, y: 408, label: 'Свет' },
   shelves: { x: 116, y: 150, label: 'Левый стеллаж' },
   hall: { x: 452, y: 92, label: 'Дальний коридор' },
   camera: { x: 666, y: 440, label: 'Камеры' },
   redFolder: { x: 528, y: 82, label: 'Красная папка' },
   case417: { x: 770, y: 430, label: 'Дело №417' },
-  flashlight: { x: 360, y: 112, label: 'Фонарик' },
+  flashlight: { x: 370, y: 190, label: 'Фонарик' },
   incinerator: { x: 42, y: 42, label: 'Урна' },
   exit: { x: 450, y: 502, label: 'Выход' },
   gate: { x: 450, y: 1165, label: 'Белые ворота' },

@@ -36,7 +36,7 @@ type Props = {
   onViewYawChange: (yaw: number) => void;
 };
 
-const personScale = 1.6;
+const personScale = 1.25;
 const personGroundY = 0.32;
 
 type Pose = {
@@ -73,6 +73,13 @@ type AnimatedPersonParts = {
   rightLowerLeg: THREE.Mesh;
   leftShoe: THREE.Mesh;
   rightShoe: THREE.Mesh;
+};
+
+type FirstPersonHandsParts = {
+  leftSleeve: THREE.Mesh;
+  rightSleeve: THREE.Mesh;
+  leftHand: THREE.Mesh;
+  rightHand: THREE.Mesh;
 };
 
 function actionPose(target: ActionTarget | null, motion: number): Pose {
@@ -479,11 +486,11 @@ function addLabel(_scene: THREE.Scene, _text: string, _position: [number, number
 }
 
 function addTable(scene: THREE.Scene) {
-  box(scene, [2.15, 0.28, 1.12], [-1.6, 0.72, -3.95], 0x7a4f2f).castShadow = true;
-  box(scene, [0.18, 0.85, 0.18], [-2.42, 0.3, -4.32], 0x3a2418);
-  box(scene, [0.18, 0.85, 0.18], [-0.78, 0.3, -4.32], 0x3a2418);
-  box(scene, [0.18, 0.85, 0.18], [-2.42, 0.3, -3.58], 0x3a2418);
-  box(scene, [0.18, 0.85, 0.18], [-0.78, 0.3, -3.58], 0x3a2418);
+  box(scene, [2.85, 0.28, 1.18], [-1.22, 0.72, -1.95], 0x7a4f2f).castShadow = true;
+  box(scene, [0.18, 0.85, 0.18], [-2.28, 0.3, -2.38], 0x3a2418);
+  box(scene, [0.18, 0.85, 0.18], [-0.16, 0.3, -2.38], 0x3a2418);
+  box(scene, [0.18, 0.85, 0.18], [-2.28, 0.3, -1.52], 0x3a2418);
+  box(scene, [0.18, 0.85, 0.18], [-0.16, 0.3, -1.52], 0x3a2418);
   addLabel(scene, 'СТОЛ', [0.0, 1.42, 1.25]);
 }
 
@@ -492,19 +499,19 @@ function addCoffee(scene: THREE.Scene) {
     new THREE.CylinderGeometry(0.18, 0.15, 0.24, 24),
     new THREE.MeshStandardMaterial({ color: 0xe1d2ae, roughness: 0.55 }),
   );
-  cup.position.set(-0.98, 0.98, -3.9);
+  cup.position.set(-0.62, 0.98, -1.9);
   scene.add(cup);
   const coffee = new THREE.Mesh(
     new THREE.CylinderGeometry(0.14, 0.14, 0.02, 24),
     new THREE.MeshStandardMaterial({ color: 0x2a1510, roughness: 0.4 }),
   );
-  coffee.position.set(-0.98, 1.11, -3.9);
+  coffee.position.set(-0.62, 1.11, -1.9);
   scene.add(coffee);
   const handle = new THREE.Mesh(
     new THREE.TorusGeometry(0.13, 0.025, 8, 18, Math.PI),
     new THREE.MeshStandardMaterial({ color: 0xe1d2ae, roughness: 0.55 }),
   );
-  handle.position.set(-0.8, 1.0, -3.9);
+  handle.position.set(-0.44, 1.0, -1.9);
   handle.rotation.z = Math.PI / 2;
   scene.add(handle);
   addLabel(scene, 'КОФЕ', [0.82, 1.48, 1.38]);
@@ -574,7 +581,7 @@ function addRedFolder(scene: THREE.Scene) {
 
 function addFlashlightModel(scene: THREE.Scene) {
   const group = new THREE.Group();
-  group.position.set(-2.12, 0.98, -3.9);
+  group.position.set(-1.95, 0.98, -1.9);
   scene.add(group);
 
   box(group as unknown as THREE.Scene, [0.52, 0.12, 0.18], [0, 0, 0], 0x1b1a18);
@@ -699,6 +706,23 @@ function addTree(scene: THREE.Scene, x: number, z: number, scale = 1) {
 function addWhiteGate(scene: THREE.Scene) {
   const white = new THREE.MeshStandardMaterial({ color: 0xf2f0e6, roughness: 0.42, metalness: 0.05 });
   const shadow = new THREE.MeshStandardMaterial({ color: 0xb8b4a8, roughness: 0.6 });
+
+  [-5.15, 5.15].forEach((centerX) => {
+    const topFence = new THREE.Mesh(new THREE.BoxGeometry(6.95, 0.14, 0.14), white);
+    topFence.position.set(centerX, 1.62, 21.82);
+    scene.add(topFence);
+
+    const bottomFence = new THREE.Mesh(new THREE.BoxGeometry(6.95, 0.12, 0.12), shadow);
+    bottomFence.position.set(centerX, 0.82, 21.82);
+    scene.add(bottomFence);
+
+    [-3.0, -1.5, 0, 1.5, 3.0].forEach((offset) => {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.85, 0.16), white);
+      post.position.set(centerX + offset, 0.92, 21.82);
+      post.castShadow = true;
+      scene.add(post);
+    });
+  });
 
   [-1.35, 1.35].forEach((x) => {
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.15, 0.18), white);
@@ -1028,6 +1052,128 @@ function createPerson(dark = false) {
   return group;
 }
 
+function createFirstPersonHands() {
+  const group = new THREE.Group();
+  group.visible = false;
+
+  const sleeveMaterial = new THREE.MeshStandardMaterial({ color: 0x315783, roughness: 0.78 });
+  const skinMaterial = new THREE.MeshStandardMaterial({ color: 0xc89f79, roughness: 0.68 });
+
+  const leftSleeve = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.46, 8, 12), sleeveMaterial);
+  const rightSleeve = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.46, 8, 12), sleeveMaterial);
+  const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.075, 14, 10), skinMaterial);
+  const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.075, 14, 10), skinMaterial);
+
+  leftSleeve.position.set(-0.22, -0.28, -0.54);
+  rightSleeve.position.set(0.22, -0.28, -0.54);
+  leftHand.position.set(-0.25, -0.44, -0.82);
+  rightHand.position.set(0.25, -0.44, -0.82);
+  leftSleeve.rotation.set(1.05, 0.18, -0.25);
+  rightSleeve.rotation.set(1.05, -0.18, 0.25);
+
+  group.add(leftSleeve, rightSleeve, leftHand, rightHand);
+  group.userData.parts = { leftSleeve, rightSleeve, leftHand, rightHand } satisfies FirstPersonHandsParts;
+  return group;
+}
+
+function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null, motion: number) {
+  const parts = group.userData.parts as FirstPersonHandsParts;
+  const beat = Math.abs(motion);
+  const shake = Math.sin(motion * 2.1);
+
+  group.visible = true;
+  group.position.set(0, 0, 0);
+  group.rotation.set(0, 0, 0);
+
+  parts.leftSleeve.position.set(-0.22, -0.29, -0.54);
+  parts.rightSleeve.position.set(0.22, -0.29, -0.54);
+  parts.leftHand.position.set(-0.25, -0.45, -0.82);
+  parts.rightHand.position.set(0.25, -0.45, -0.82);
+  parts.leftSleeve.rotation.set(1.05, 0.18, -0.25);
+  parts.rightSleeve.rotation.set(1.05, -0.18, 0.25);
+
+  switch (target) {
+    case 'boxesUnpack':
+    case 'boxes':
+      parts.leftHand.position.set(-0.34, -0.33 + beat * 0.1, -0.82 - beat * 0.22);
+      parts.rightHand.position.set(0.34, -0.31 - beat * 0.08, -0.82 - beat * 0.2);
+      parts.leftSleeve.rotation.set(1.35 + beat * 0.22, 0.3, -0.46);
+      parts.rightSleeve.rotation.set(1.35 - beat * 0.16, -0.3, 0.46);
+      break;
+    case 'switch':
+      parts.leftHand.position.set(-0.28, -0.5, -0.72);
+      parts.rightHand.position.set(0.36, -0.05 + motion * 0.04, -0.92);
+      parts.rightSleeve.rotation.set(1.95, -0.45, 0.18 + beat * 0.18);
+      break;
+    case 'deskSort':
+      parts.leftHand.position.set(-0.28, -0.34 + beat * 0.28, -0.92);
+      parts.rightHand.position.set(0.28, -0.34 + beat * 0.28, -0.92);
+      parts.leftSleeve.rotation.set(1.7 - beat * 0.35, 0.2, -0.2);
+      parts.rightSleeve.rotation.set(1.7 - beat * 0.35, -0.2, 0.2);
+      break;
+    case 'deskOpen':
+    case 'case417Read':
+      parts.leftHand.position.set(-0.32, -0.44, -0.86);
+      parts.rightHand.position.set(0.12 + motion * 0.14, -0.33, -0.95);
+      parts.rightSleeve.rotation.set(1.55, -0.22 + motion * 0.22, 0.12);
+      break;
+    case 'coffeeMirror':
+    case 'coffee':
+      parts.leftHand.position.set(-0.3, -0.5, -0.76);
+      parts.rightHand.position.set(0.16, -0.12 - beat * 0.08, -0.62);
+      parts.rightSleeve.rotation.set(2.25, -0.12, 0.12);
+      break;
+    case 'hallListen':
+    case 'hall':
+      parts.leftHand.position.set(-0.47, -0.12 + shake * 0.02, -0.42);
+      parts.rightHand.position.set(0.28, -0.48, -0.75);
+      parts.leftSleeve.rotation.set(2.15, 0.58, -0.7);
+      break;
+    case 'cameraTune':
+    case 'camera':
+      parts.leftHand.position.set(-0.32 + motion * 0.05, -0.28, -0.92);
+      parts.rightHand.position.set(0.32 - motion * 0.05, -0.28, -0.92);
+      parts.leftSleeve.rotation.set(1.42, 0.38, -0.28 + motion * 0.16);
+      parts.rightSleeve.rotation.set(1.42, -0.38, 0.28 - motion * 0.16);
+      break;
+    case 'redSeal':
+    case 'redFolder':
+      parts.leftHand.position.set(-0.16, -0.31, -0.96);
+      parts.rightHand.position.set(0.16 + motion * 0.08, -0.31, -0.96);
+      parts.leftSleeve.rotation.set(1.5, 0.08, -0.12);
+      parts.rightSleeve.rotation.set(1.55, -0.08, 0.12 + beat * 0.2);
+      break;
+    case 'flashlightBeam':
+    case 'flashlight':
+      parts.leftHand.position.set(-0.14, -0.31, -0.84);
+      parts.rightHand.position.set(0.14, -0.31, -0.84);
+      parts.leftSleeve.rotation.set(1.28, 0.05, -0.08);
+      parts.rightSleeve.rotation.set(1.28, -0.05, 0.08);
+      break;
+    case 'keyTake':
+      parts.leftHand.position.set(-0.28, -0.48, -0.78);
+      parts.rightHand.position.set(0.1 + motion * 0.12, -0.26 - beat * 0.06, -0.9);
+      parts.rightSleeve.rotation.set(1.72, -0.1, 0.24 + beat * 0.28);
+      break;
+    case 'vacuumUnlock':
+      parts.leftHand.position.set(-0.22, -0.3, -0.86);
+      parts.rightHand.position.set(0.24 + Math.sin(motion * 3) * 0.06, -0.24, -0.88);
+      parts.rightSleeve.rotation.set(1.66, -0.28, 0.45 + Math.sin(motion * 3) * 0.35);
+      break;
+    case 'vacuumSuck':
+      group.position.set(shake * 0.025, beat * 0.025, 0);
+      parts.leftHand.position.set(-0.26, -0.22 + motion * 0.03, -1.02);
+      parts.rightHand.position.set(0.26, -0.22 - motion * 0.03, -1.02);
+      parts.leftSleeve.rotation.set(1.72, 0.18, -0.2 + shake * 0.15);
+      parts.rightSleeve.rotation.set(1.72, -0.18, 0.2 - shake * 0.15);
+      break;
+    default:
+      parts.leftHand.position.set(-0.26, -0.38 + beat * 0.08, -0.84);
+      parts.rightHand.position.set(0.26, -0.38 - beat * 0.08, -0.84);
+      break;
+  }
+}
+
 export function ThreeArchive({
   player,
   lightOn,
@@ -1045,6 +1191,7 @@ export function ThreeArchive({
   const mountRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<THREE.Group | null>(null);
   const doubleRef = useRef<THREE.Group | null>(null);
+  const firstPersonHandsRef = useRef<THREE.Group | null>(null);
   const playerTargetRef = useRef(new THREE.Vector3(0, personGroundY, 0));
   const lampRef = useRef<THREE.PointLight | null>(null);
   const playerLightRef = useRef<THREE.PointLight | null>(null);
@@ -1106,6 +1253,11 @@ export function ThreeArchive({
     const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.08, 100);
     camera.position.set(0, 1.3, 0);
     camera.lookAt(0, 0, 0);
+    scene.add(camera);
+
+    const firstPersonHands = createFirstPersonHands();
+    camera.add(firstPersonHands);
+    firstPersonHandsRef.current = firstPersonHands;
 
     const renderer = new THREE.WebGLRenderer({
       antialias: false,
@@ -1168,7 +1320,7 @@ export function ThreeArchive({
 
     addTable(scene);
     const personalFolder = new THREE.Group();
-    personalFolder.position.set(-1.55, 0.96, -4.02);
+    personalFolder.position.set(-1.25, 0.96, -1.98);
     scene.add(personalFolder);
     box(personalFolder as unknown as THREE.Scene, [0.82, 0.06, 0.44], [0, 0, 0], 0xd8c9a8);
     sourceItemRefs.current['Папка без номера'] = personalFolder;
@@ -1281,7 +1433,9 @@ export function ThreeArchive({
       }
       if (ghostCabinetDoorRef.current) {
         const unlockingCabinet =
-          actionActiveRef.current && actionTargetRef.current === 'ghostVacuum' && hasGhostKeyRef.current;
+          actionActiveRef.current &&
+          (actionTargetRef.current === 'ghostVacuum' || actionTargetRef.current === 'vacuumUnlock') &&
+          hasGhostKeyRef.current;
         const targetRotation = unlockingCabinet || hasGhostVacuumRef.current ? -1.28 : 0;
         ghostCabinetDoorRef.current.rotation.y = THREE.MathUtils.lerp(
           ghostCabinetDoorRef.current.rotation.y,
@@ -1321,6 +1475,10 @@ export function ThreeArchive({
         const workMotion = working ? Math.sin(frame * 9) : 0;
         const pose = working ? actionPose(actionTargetRef.current, workMotion) : null;
         const parts = playerRef.current.userData.parts as AnimatedPersonParts;
+        if (firstPersonHandsRef.current) {
+          if (working) updateFirstPersonHands(firstPersonHandsRef.current, actionTargetRef.current, workMotion);
+          else firstPersonHandsRef.current.visible = false;
+        }
 
         playerRef.current.position.lerp(targetPosition, working ? 0.55 : 0.28);
         playerRef.current.position.y = personGroundY + bob + (pose?.lift ?? 0);
@@ -1343,7 +1501,7 @@ export function ThreeArchive({
         parts.rightShoe.rotation.set(pose?.rightShoe ?? Math.PI / 2 + stride * 0.26 + rightKnee * 0.38, 0, 0);
         const target = playerRef.current.position;
         const pitch = cameraPitchRef.current;
-        const eyeHeight = 1.22 + bob * 0.35 + (pose?.lift ?? 0) * 0.25;
+        const eyeHeight = 1.34 * personScale + bob * 0.35 + (pose?.lift ?? 0) * 0.25;
         const lookDistance = 6;
         const lookFlat = Math.cos(pitch) * lookDistance;
         playerRef.current.visible = false;
