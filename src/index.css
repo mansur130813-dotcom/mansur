@@ -161,14 +161,12 @@ input:focus {
 }
 
 .game-shell {
-  width: min(1240px, 100%);
-  min-height: 100vh;
-  margin: 0 auto;
-  padding: 20px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 330px;
-  grid-template-rows: auto 1fr;
-  gap: 16px;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #050403;
 }
 
 .jumpscare {
@@ -300,10 +298,23 @@ input:focus {
 }
 
 .game-title {
-  grid-column: 1 / -1;
+  position: fixed;
+  top: 14px;
+  left: 18px;
+  z-index: 12;
+  pointer-events: none;
 }
 
-.game-title h1,
+.game-title h1 {
+  display: none;
+}
+
+.game-title .eyebrow {
+  margin: 0;
+  color: rgba(241, 221, 176, 0.72);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+}
+
 .ending-card h1 {
   margin-bottom: 0;
   font-size: clamp(38px, 7vw, 82px);
@@ -320,16 +331,20 @@ input:focus {
 }
 
 .board {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
   min-width: 0;
 }
 
 .room {
   position: relative;
   width: 100%;
-  max-height: calc(100vh - 160px);
+  height: 100%;
+  max-height: none;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 0;
+  border-radius: 0;
   background: #080706;
   box-shadow: inset 0 0 110px rgba(0, 0, 0, 0.74);
 }
@@ -629,38 +644,50 @@ input:focus {
 }
 
 .hud {
+  position: fixed;
+  left: 18px;
+  top: 42px;
+  bottom: 18px;
+  z-index: 20;
+  width: min(340px, calc(100vw - 36px));
+  overflow-y: auto;
+  padding-right: 4px;
   display: grid;
-  gap: 12px;
+  gap: 10px;
   align-content: start;
+  pointer-events: auto;
 }
 
 .panel,
 .ending-card {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(31, 27, 23, 0.95);
-  padding: 16px;
+  background: rgba(18, 15, 13, 0.78);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(7px);
+  padding: 12px;
 }
 
 .panel h2 {
-  margin-bottom: 8px;
-  font-size: 18px;
+  margin-bottom: 6px;
+  font-size: 15px;
 }
 
 .panel p {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   color: var(--paper);
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .message-panel {
-  min-height: 118px;
-  background: rgba(41, 34, 29, 0.98);
+  min-height: 86px;
+  background: rgba(31, 25, 21, 0.82);
 }
 
 .journal p {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .fear-meter {
@@ -680,7 +707,7 @@ input:focus {
 
 .action-panel {
   border-color: #8d6a3c;
-  background: rgba(43, 34, 24, 0.98);
+  background: rgba(43, 34, 24, 0.86);
 }
 
 .action-meter {
@@ -700,12 +727,12 @@ input:focus {
 
 .camera-viewer {
   border-color: #4f8f78;
-  background: #101916;
+  background: rgba(16, 25, 22, 0.92);
 }
 
 .camera-feed {
   position: relative;
-  min-height: 150px;
+  min-height: 118px;
   overflow: hidden;
   border: 1px solid #315848;
   border-radius: 6px;
@@ -929,30 +956,26 @@ input:focus {
 }
 
 @media (max-width: 980px) {
-  .game-shell {
-    grid-template-columns: 1fr;
-  }
-
   .menu-layout {
     grid-template-columns: 1fr;
   }
 
-  .room {
-    max-height: none;
-  }
-
   .hud {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(320px, calc(100vw - 24px));
+    left: 12px;
+    top: 38px;
+    bottom: 12px;
   }
 }
 
 @media (max-width: 640px) {
-  .game-shell {
-    padding: 12px;
-  }
-
   .hud {
-    grid-template-columns: 1fr;
+    width: calc(100vw - 20px);
+    left: 10px;
+    right: 10px;
+    top: 36px;
+    bottom: auto;
+    max-height: 44vh;
   }
 
   .touch-controls {
