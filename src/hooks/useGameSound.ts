@@ -166,11 +166,11 @@ export function useGameSound() {
     if (cue === 'ending') makeOscillator(context, 'sine', 28, 0.08, 0.9);
     if (cue === 'scream') {
       makeImpact(context);
-      makeNoiseBlast(context, 0.95, 0.44);
-      makeNoiseBlast(context, 0.24, 0.28);
-      makeOscillator(context, 'sawtooth', 1620, 0.22, 0.58);
-      makeOscillator(context, 'square', 64, 0.24, 1.0);
-      makeOscillator(context, 'triangle', 560, 0.15, 0.72);
+      makeNoiseBlast(context, 0.65, 0.32);
+      makeNoiseBlast(context, 0.18, 0.22);
+      makeOscillator(context, 'sawtooth', 1180, 0.14, 0.42);
+      makeOscillator(context, 'square', 48, 0.3, 1.15);
+      makeOscillator(context, 'triangle', 220, 0.16, 0.9);
     }
     if (cue === 'voiceAaa') speak('а-а-а');
     if (cue === 'voiceCheck') speak('хорошо, проверим');

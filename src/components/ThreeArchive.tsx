@@ -946,6 +946,8 @@ function capsule(
 
 function createPerson(dark = false) {
   const group = new THREE.Group();
+  const makePersonMaterial = (color: number, roughness: number, emissive = 0x000000) =>
+    new THREE.MeshStandardMaterial({ color, roughness, emissive });
   const skin = dark ? 0x050403 : 0xc89f79;
   const coat = dark ? 0x050403 : 0x315783;
   const pants = dark ? 0x050403 : 0x2b2f3a;
@@ -954,7 +956,7 @@ function createPerson(dark = false) {
 
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(0.18, 24, 18),
-    new THREE.MeshStandardMaterial({ color: skin, roughness: 0.68 }),
+    makePersonMaterial(skin, 0.68),
   );
   head.position.set(0, 1.35, 0);
   head.castShadow = true;
@@ -962,7 +964,7 @@ function createPerson(dark = false) {
 
   const hair = new THREE.Mesh(
     new THREE.SphereGeometry(0.185, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2),
-    new THREE.MeshStandardMaterial({ color: dark ? 0x020202 : 0x21140f, roughness: 0.9 }),
+    makePersonMaterial(dark ? 0x020202 : 0x21140f, 0.9),
   );
   hair.position.set(0, 1.43, -0.01);
   group.add(hair);
@@ -971,7 +973,7 @@ function createPerson(dark = false) {
 
   const torso = new THREE.Mesh(
     new THREE.BoxGeometry(0.46, 0.68, 0.28),
-    new THREE.MeshStandardMaterial({ color: coat, roughness: 0.78 }),
+    makePersonMaterial(coat, 0.78),
   );
   torso.position.set(0, 0.78, 0);
   torso.castShadow = true;
@@ -979,7 +981,7 @@ function createPerson(dark = false) {
 
   const badgeMesh = new THREE.Mesh(
     new THREE.BoxGeometry(0.16, 0.11, 0.018),
-    new THREE.MeshStandardMaterial({ color: badge, roughness: 0.35, emissive: dark ? 0x000000 : 0x6b4a18 }),
+    makePersonMaterial(badge, 0.35, dark ? 0x000000 : 0x6b4a18),
   );
   badgeMesh.position.set(0.13, 0.92, 0.15);
   group.add(badgeMesh);
@@ -1007,6 +1009,7 @@ function createPerson(dark = false) {
     leftShoe,
     rightShoe,
   );
+
   group.userData.parts = {
     head,
     torso,
@@ -1062,7 +1065,7 @@ export function ThreeArchive({
   const hasGhostVacuumRef = useRef(inventory.includes('Пылесос для привидений'));
   const exitDoorOpenedRef = useRef(false);
   const cameraYawRef = useRef(0.28);
-  const cameraPitchRef = useRef(0.42);
+  const cameraPitchRef = useRef(0);
   const draggingRef = useRef(false);
   const pointerRef = useRef({ x: 0, y: 0 });
 
@@ -1082,7 +1085,7 @@ export function ThreeArchive({
       const dy = event.clientY - pointerRef.current.y;
       pointerRef.current = { x: event.clientX, y: event.clientY };
       cameraYawRef.current -= dx * 0.006;
-      cameraPitchRef.current = THREE.MathUtils.clamp(cameraPitchRef.current + dy * 0.0025, 0.18, 0.56);
+      cameraPitchRef.current = THREE.MathUtils.clamp(cameraPitchRef.current + dy * 0.0025, -0.72, 0.72);
       onViewYawChange(cameraYawRef.current);
     };
 
@@ -1100,8 +1103,8 @@ export function ThreeArchive({
     scene.background = new THREE.Color(0x0a0908);
     scene.fog = new THREE.Fog(0x0a0908, 9, 20);
 
-    const camera = new THREE.PerspectiveCamera(58, 16 / 9, 0.1, 100);
-    camera.position.set(0, 3.2, 6.2);
+    const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.08, 100);
+    camera.position.set(0, 1.3, 0);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({
@@ -1264,6 +1267,7 @@ export function ThreeArchive({
     let lastFrameAt = 0;
     const frameInterval = 1000 / 45;
     const cameraGoal = new THREE.Vector3();
+    const lookGoal = new THREE.Vector3();
     const animate = (timestamp = 0) => {
       animation = requestAnimationFrame(animate);
       if (timestamp - lastFrameAt < frameInterval) return;
@@ -1301,6 +1305,8 @@ export function ThreeArchive({
       if (playerRef.current) {
         const yaw = cameraYawRef.current;
         const bodyYaw = yaw + Math.PI;
+        const forwardX = -Math.sin(yaw);
+        const forwardZ = -Math.cos(yaw);
         const targetPosition = playerTargetRef.current;
         const distanceToTarget = Math.hypot(
           playerRef.current.position.x - targetPosition.x,
@@ -1336,22 +1342,30 @@ export function ThreeArchive({
         parts.leftShoe.rotation.set(pose?.leftShoe ?? Math.PI / 2 - stride * 0.26 + leftKnee * 0.38, 0, 0);
         parts.rightShoe.rotation.set(pose?.rightShoe ?? Math.PI / 2 + stride * 0.26 + rightKnee * 0.38, 0, 0);
         const target = playerRef.current.position;
-        const distance = 4.35;
         const pitch = cameraPitchRef.current;
-        const horizontal = Math.cos(pitch) * distance;
+        const eyeHeight = 1.22 + bob * 0.35 + (pose?.lift ?? 0) * 0.25;
+        const lookDistance = 6;
+        const lookFlat = Math.cos(pitch) * lookDistance;
+        playerRef.current.visible = false;
         cameraGoal.set(
-          target.x + Math.sin(yaw) * horizontal,
-          1.35 + Math.sin(pitch) * distance,
-          target.z + Math.cos(yaw) * horizontal,
+          target.x + forwardX * 0.1,
+          personGroundY + eyeHeight,
+          target.z + forwardZ * 0.1,
         );
-        cameraGoal.x = THREE.MathUtils.clamp(cameraGoal.x, -10.2, 10.2);
-        cameraGoal.y = THREE.MathUtils.clamp(cameraGoal.y, 1.75, 3.55);
-        cameraGoal.z = THREE.MathUtils.clamp(cameraGoal.z, -6.05, 31.5);
-        camera.position.lerp(cameraGoal, 0.055);
-        camera.lookAt(target.x, 1.2, target.z);
+        lookGoal.set(
+          cameraGoal.x + forwardX * lookFlat,
+          cameraGoal.y - Math.sin(pitch) * lookDistance,
+          cameraGoal.z + forwardZ * lookFlat,
+        );
+        camera.position.lerp(cameraGoal, 0.34);
+        camera.lookAt(lookGoal);
         playerLight.position.set(target.x, 2.1, target.z + 0.4);
-        flashlight.position.set(target.x - Math.sin(yaw) * 0.25, 1.15, target.z - Math.cos(yaw) * 0.25);
-        flashlightTarget.position.set(target.x - Math.sin(yaw) * 3.4, 0.65, target.z - Math.cos(yaw) * 3.4);
+        flashlight.position.set(cameraGoal.x, cameraGoal.y - 0.12, cameraGoal.z);
+        flashlightTarget.position.set(
+          cameraGoal.x + forwardX * 3.6,
+          cameraGoal.y - Math.sin(pitch) * 3.6,
+          cameraGoal.z + forwardZ * 3.6,
+        );
       }
       if (doubleRef.current) {
         const sucking = actionActiveRef.current && actionTargetRef.current === 'vacuumSuck';

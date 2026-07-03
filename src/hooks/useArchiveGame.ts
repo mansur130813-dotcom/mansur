@@ -131,6 +131,10 @@ function stepToward(from: Point, to: Point, amount: number): Point {
   };
 }
 
+function moveShadowToward(current: Point, target: Point, amount: number): Point {
+  return clampWalkTarget(stepToward(current, target, amount), true, current);
+}
+
 function objectiveAction(objectiveIndex: number, target: HotspotId): Pick<ActionState, 'target' | 'label'> {
   const actions: Partial<Record<number, Pick<ActionState, 'target' | 'label'>>> = {
     0: {
@@ -238,6 +242,8 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
   const [shadowAwake, setShadowAwake] = useState(false);
   const [shadowDefeated, setShadowDefeated] = useState(false);
   const [jumpscare, setJumpscare] = useState(false);
+  const playerRef = useRef(player);
+  const shadowPointRef = useRef(shadowPoint);
 
   const objective = objectives[objectiveIndex] ?? objectives[objectives.length - 1];
   const finalMode = objectiveIndex === objectives.length;
@@ -628,19 +634,31 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
   }, []);
 
   useEffect(() => {
+    playerRef.current = player;
+  }, [player]);
+
+  useEffect(() => {
+    shadowPointRef.current = shadowPoint;
+  }, [shadowPoint]);
+
+  useEffect(() => {
     if (!active || !shadowAwake || shadowDefeated || ending || action?.target === 'vacuumSuck') return undefined;
 
     const attack = window.setInterval(() => {
-      const gap = distance(shadowPoint, player);
+      const current = shadowPointRef.current;
+      const target = playerRef.current;
+      const gap = distance(current, target);
       if (gap < 34) {
         restartAfterShadowAttack();
         return;
       }
-      setShadowPoint((current) => stepToward(current, player, 18));
-    }, 420);
+      const next = moveShadowToward(current, target, 30);
+      shadowPointRef.current = next;
+      setShadowPoint(next);
+    }, 260);
 
     return () => window.clearInterval(attack);
-  }, [action?.target, active, ending, player, shadowAwake, shadowDefeated, shadowPoint]);
+  }, [action?.target, active, ending, shadowAwake, shadowDefeated]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
