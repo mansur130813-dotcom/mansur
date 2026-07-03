@@ -180,7 +180,11 @@ input:focus {
     repeating-linear-gradient(90deg, rgba(255, 247, 232, 0.14) 0 1px, transparent 1px 5px),
     repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.5) 0 3px, transparent 3px 9px),
     radial-gradient(circle at 50% 40%, #fff7e8 0 4%, #aa7d66 9%, #5c1618 23%, #020202 62%);
-  animation: jumpscareFlash 0.22s steps(2) infinite, jumpscareShake 0.12s ease-in-out infinite, jumpscareTunnel 0.8s ease-in-out infinite;
+  animation:
+    jumpscareOpening 0.42s cubic-bezier(0.12, 0.9, 0.18, 1) both,
+    jumpscareFlash 0.22s steps(2) 0.42s infinite,
+    jumpscareShake 0.12s ease-in-out 0.42s infinite,
+    jumpscareTunnel 0.8s ease-in-out 0.42s infinite;
 }
 
 .jumpscare::before {
@@ -236,7 +240,9 @@ input:focus {
     inset 0 86px 120px rgba(255, 247, 232, 0.12);
   transform: scale(1.34);
   image-rendering: pixelated;
-  animation: jumpscareFace 0.42s ease-in-out infinite;
+  animation:
+    jumpscareFaceStart 0.42s cubic-bezier(0.06, 0.9, 0.12, 1) both,
+    jumpscareFace 0.42s ease-in-out 0.42s infinite;
 }
 
 .jumpscare-face::before,
@@ -868,6 +874,28 @@ input:focus {
   }
 }
 
+@keyframes jumpscareOpening {
+  0% {
+    filter: brightness(0.18) contrast(1.1) saturate(0.4);
+    transform: scale(0.94);
+  }
+
+  18% {
+    filter: brightness(2.6) contrast(3.2) saturate(0.15);
+    transform: scale(1.16) translate(-10px, 8px);
+  }
+
+  36% {
+    filter: brightness(0.35) contrast(2.4) saturate(1.1);
+    transform: scale(1.05) translate(8px, -6px);
+  }
+
+  100% {
+    filter: contrast(1.45) saturate(1.1);
+    transform: scale(1.02);
+  }
+}
+
 @keyframes jumpscareShake {
   0%,
   100% {
@@ -941,6 +969,27 @@ input:focus {
 
   50% {
     transform: scale(1.5) translateY(-6%);
+  }
+}
+
+@keyframes jumpscareFaceStart {
+  0% {
+    opacity: 0;
+    transform: scale(0.42) translateY(20%);
+  }
+
+  16% {
+    opacity: 1;
+    transform: scale(1.72) translateY(-10%);
+  }
+
+  38% {
+    transform: scale(1.28) translateY(5%);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1.2) translateY(3%);
   }
 }
 

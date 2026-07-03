@@ -27,6 +27,7 @@ type Props = {
   fear: number;
   coffeeDrunk: boolean;
   inventory: string[];
+  ghostCabinetUnlocked: boolean;
   droppedItems: DroppedItem[];
   shadowPoint: Point;
   shadowVisible: boolean;
@@ -1174,12 +1175,48 @@ function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null,
   }
 }
 
+function createShadowSuctionEffect() {
+  const group = new THREE.Group();
+  group.visible = false;
+
+  for (let index = 0; index < 11; index += 1) {
+    const puff = new THREE.Mesh(
+      new THREE.SphereGeometry(0.18 + index * 0.015, 12, 8),
+      new THREE.MeshBasicMaterial({
+        color: index % 2 === 0 ? 0x020202 : 0x17110f,
+        transparent: true,
+        opacity: 0.42,
+        depthWrite: false,
+      }),
+    );
+    puff.userData.phase = index * 0.57;
+    group.add(puff);
+  }
+
+  const core = new THREE.Mesh(
+    new THREE.ConeGeometry(0.42, 1.7, 18, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: 0x030202,
+      transparent: true,
+      opacity: 0.34,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
+  );
+  core.rotation.x = Math.PI / 2;
+  group.add(core);
+  group.userData.core = core;
+
+  return group;
+}
+
 export function ThreeArchive({
   player,
   lightOn,
   fear,
   coffeeDrunk,
   inventory,
+  ghostCabinetUnlocked,
   droppedItems,
   shadowPoint,
   shadowVisible,
@@ -1192,6 +1229,7 @@ export function ThreeArchive({
   const playerRef = useRef<THREE.Group | null>(null);
   const doubleRef = useRef<THREE.Group | null>(null);
   const firstPersonHandsRef = useRef<THREE.Group | null>(null);
+  const shadowSuctionRef = useRef<THREE.Group | null>(null);
   const playerTargetRef = useRef(new THREE.Vector3(0, personGroundY, 0));
   const lampRef = useRef<THREE.PointLight | null>(null);
   const playerLightRef = useRef<THREE.PointLight | null>(null);
@@ -1210,6 +1248,7 @@ export function ThreeArchive({
   const shadowAttackingRef = useRef(shadowAttacking);
   const hasGhostKeyRef = useRef(inventory.includes('Ключ от стеклянной полки'));
   const hasGhostVacuumRef = useRef(inventory.includes('Пылесос для привидений'));
+  const ghostCabinetUnlockedRef = useRef(ghostCabinetUnlocked);
   const exitDoorOpenedRef = useRef(false);
   const cameraYawRef = useRef(0.28);
   const cameraPitchRef = useRef(0);
@@ -1357,6 +1396,10 @@ export function ThreeArchive({
     scene.add(doubleGroup);
     doubleRef.current = doubleGroup;
 
+    const shadowSuction = createShadowSuctionEffect();
+    scene.add(shadowSuction);
+    shadowSuctionRef.current = shadowSuction;
+
     const ambient = new THREE.AmbientLight(0x8a7356, 0.75);
     scene.add(ambient);
 
@@ -1436,7 +1479,7 @@ export function ThreeArchive({
           actionActiveRef.current &&
           (actionTargetRef.current === 'ghostVacuum' || actionTargetRef.current === 'vacuumUnlock') &&
           hasGhostKeyRef.current;
-        const targetRotation = unlockingCabinet || hasGhostVacuumRef.current ? -1.28 : 0;
+        const targetRotation = unlockingCabinet || ghostCabinetUnlockedRef.current || hasGhostVacuumRef.current ? -1.28 : 0;
         ghostCabinetDoorRef.current.rotation.y = THREE.MathUtils.lerp(
           ghostCabinetDoorRef.current.rotation.y,
           targetRotation,
@@ -1542,6 +1585,45 @@ export function ThreeArchive({
           : 0;
         const pulse = sucking ? Math.max(0.12, 1 - ((Math.sin(frame * 8) + 1) * 0.28 + 0.35)) : 1;
         doubleRef.current.scale.setScalar(personScale * pulse);
+
+        if (shadowSuctionRef.current && playerRef.current) {
+          shadowSuctionRef.current.visible = sucking;
+          if (sucking) {
+            const start = doubleRef.current.position;
+            const end = playerRef.current.position;
+            const dx = end.x - start.x;
+            const dz = end.z - start.z;
+            const gap = Math.hypot(dx, dz) || 1;
+            const sideX = -dz / gap;
+            const sideZ = dx / gap;
+
+            shadowSuctionRef.current.children.forEach((child, index) => {
+              if (!(child instanceof THREE.Mesh)) return;
+              const phase = Number(child.userData.phase ?? 0);
+              const t = ((frame * 1.8 + index * 0.085) % 1);
+              const swirl = Math.sin(frame * 18 + phase) * (0.34 * (1 - t));
+              const lift = Math.cos(frame * 14 + phase) * 0.18 * (1 - t);
+              child.position.set(
+                start.x + dx * t + sideX * swirl,
+                personGroundY + 0.62 + t * 0.8 + lift,
+                start.z + dz * t + sideZ * swirl,
+              );
+              child.scale.setScalar(Math.max(0.08, 1 - t * 0.78));
+              child.rotation.y += 0.18 + t * 0.18;
+              if (child.material instanceof THREE.Material) {
+                child.material.opacity = child.userData.core ? 0.26 : 0.5 * (1 - t) + 0.08;
+              }
+            });
+
+            const core = shadowSuctionRef.current.userData.core as THREE.Mesh | undefined;
+            if (core) {
+              core.position.set((start.x + end.x) / 2, personGroundY + 0.92, (start.z + end.z) / 2);
+              core.scale.set(0.75 + Math.sin(frame * 15) * 0.12, 1, gap * 0.72);
+              core.lookAt(end.x, personGroundY + 1.05, end.z);
+              core.rotateX(Math.PI / 2);
+            }
+          }
+        }
       }
       renderer.render(scene, camera);
     };
@@ -1610,6 +1692,10 @@ export function ThreeArchive({
       if (object) object.visible = !movedItems.has(item);
     });
   }, [droppedItems, inventory]);
+
+  useEffect(() => {
+    ghostCabinetUnlockedRef.current = ghostCabinetUnlocked;
+  }, [ghostCabinetUnlocked]);
 
   useEffect(() => {
     if (lampRef.current) {

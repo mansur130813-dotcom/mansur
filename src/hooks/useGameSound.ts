@@ -23,23 +23,26 @@ function makeOscillator(
   frequency: number,
   gainValue: number,
   duration: number,
+  delay = 0,
 ) {
   const oscillator = context.createOscillator();
   const gain = context.createGain();
+  const startAt = context.currentTime + delay;
   oscillator.type = type;
   oscillator.frequency.value = frequency;
-  gain.gain.setValueAtTime(gainValue, context.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
+  gain.gain.setValueAtTime(gainValue, startAt);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
   oscillator.connect(gain);
   gain.connect(context.destination);
-  oscillator.start();
-  oscillator.stop(context.currentTime + duration);
+  oscillator.start(startAt);
+  oscillator.stop(startAt + duration);
 }
 
-function makeNoiseBlast(context: AudioContext, duration: number, gainValue: number) {
+function makeNoiseBlast(context: AudioContext, duration: number, gainValue: number, delay = 0) {
   const sampleRate = context.sampleRate;
   const buffer = context.createBuffer(1, Math.floor(sampleRate * duration), sampleRate);
   const data = buffer.getChannelData(0);
+  const startAt = context.currentTime + delay;
 
   for (let index = 0; index < data.length; index += 1) {
     const fade = 1 - index / data.length;
@@ -52,14 +55,14 @@ function makeNoiseBlast(context: AudioContext, duration: number, gainValue: numb
   filter.type = 'bandpass';
   filter.frequency.value = 2100;
   filter.Q.value = 5.5;
-  gain.gain.setValueAtTime(gainValue, context.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
+  gain.gain.setValueAtTime(gainValue, startAt);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
   source.buffer = buffer;
   source.connect(filter);
   filter.connect(gain);
   gain.connect(context.destination);
-  source.start();
-  source.stop(context.currentTime + duration);
+  source.start(startAt);
+  source.stop(startAt + duration);
 }
 
 function makeImpact(context: AudioContext) {
@@ -166,11 +169,13 @@ export function useGameSound() {
     if (cue === 'ending') makeOscillator(context, 'sine', 28, 0.08, 0.9);
     if (cue === 'scream') {
       makeImpact(context);
-      makeNoiseBlast(context, 0.65, 0.32);
-      makeNoiseBlast(context, 0.18, 0.22);
-      makeOscillator(context, 'sawtooth', 1180, 0.14, 0.42);
-      makeOscillator(context, 'square', 48, 0.3, 1.15);
-      makeOscillator(context, 'triangle', 220, 0.16, 0.9);
+      makeNoiseBlast(context, 0.34, 0.52);
+      makeOscillator(context, 'sawtooth', 1780, 0.24, 0.28);
+      makeOscillator(context, 'square', 42, 0.38, 0.72);
+      makeNoiseBlast(context, 0.52, 0.22, 0.32);
+      makeNoiseBlast(context, 0.22, 0.18, 0.78);
+      makeOscillator(context, 'triangle', 190, 0.14, 0.95, 0.28);
+      makeOscillator(context, 'sawtooth', 760, 0.08, 0.42, 0.62);
     }
     if (cue === 'voiceAaa') speak('а-а-а');
     if (cue === 'voiceCheck') speak('хорошо, проверим');

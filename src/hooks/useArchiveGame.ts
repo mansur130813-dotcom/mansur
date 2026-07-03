@@ -238,6 +238,7 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
   const [action, setAction] = useState<ActionState | null>(null);
   const [cameraViewer, setCameraViewer] = useState<CameraViewerState>({ open: false, index: 0 });
   const [exitOpen, setExitOpen] = useState(false);
+  const [ghostCabinetUnlocked, setGhostCabinetUnlocked] = useState(false);
   const [shadowPoint, setShadowPoint] = useState<Point>({ x: 452, y: 92 });
   const [shadowAwake, setShadowAwake] = useState(false);
   const [shadowDefeated, setShadowDefeated] = useState(false);
@@ -333,19 +334,20 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
     return inventory.includes(item) || droppedItems.some((dropped) => dropped.item === item);
   }
 
-  function addInventory(item: string, dropPoint = player) {
-    setInventory((current) => {
-      const held = current[0];
-      if (held && held !== item) {
-        setDroppedItems((items) => [droppedItem(held, dropPoint), ...items]);
-      }
-      return [item];
-    });
+  function addInventory(item: string) {
+    if (inventory.includes(item)) return true;
+    if (inventory.length > 0) {
+      setMessage(`Сначала выброси "${inventory[0]}", потом возьми "${item}".`);
+      return false;
+    }
+
+    setInventory([item]);
     if (item === 'Пылесос для привидений') {
       setShadowAwake(true);
       setShadowPoint({ x: 452, y: 92 });
       setMessage('Пылесос щёлкает и оживает. Силуэт в коридоре наконец замечает тебя.');
     }
+    return true;
   }
 
   function dropInventory() {
@@ -360,8 +362,8 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
   function pickDroppedItem(id: string) {
     const found = droppedItems.find((item) => item.id === id);
     if (!found) return;
+    if (!addInventory(found.item)) return;
     setDroppedItems((items) => items.filter((item) => item.id !== id));
-    addInventory(found.item, found.point);
     playSound('interact');
     setMessage(`${found.item} снова у тебя.`);
   }
@@ -402,14 +404,20 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
         : 'Ты открываешь уличную полку, цепляешь ключ двумя пальцами и прячешь его в ладони.',
       ghostVacuum: itemIsInWorld('Пылесос для привидений')
         ? 'Стеклянный шкаф пуст. Пылесос для привидений уже у тебя.'
-        : inventory.includes('Ключ от стеклянной полки')
-          ? 'Ключ дважды проворачивается. Стеклянная дверца открывается, и ты снимаешь пылесос с крюка.'
+        : ghostCabinetUnlocked
+          ? 'Стеклянная дверца открыта. Можно снять пылесос, если руки свободны.'
+          : inventory.includes('Ключ от стеклянной полки')
+            ? 'Ключ дважды проворачивается. Стеклянная дверца открывается.'
           : 'Пылесос заперт за стеклом. Нужен ключ с уличной полки.',
     };
 
     if (id === 'switch') setLightOn((value) => !value);
-    if (id === 'ghostKey' && !itemIsInWorld('Ключ от стеклянной полки')) addInventory('Ключ от стеклянной полки');
-    if (id === 'ghostVacuum' && inventory.includes('Ключ от стеклянной полки') && !itemIsInWorld('Пылесос для привидений')) {
+    if (id === 'ghostKey' && !itemIsInWorld('Ключ от стеклянной полки') && !addInventory('Ключ от стеклянной полки')) return;
+    if (id === 'ghostVacuum' && ghostCabinetUnlocked && !itemIsInWorld('Пылесос для привидений')) {
+      if (inventory.length > 0 && !inventory.includes('Пылесос для привидений')) {
+        setMessage(`Сначала выброси "${inventory[0]}", потом возьми пылесос.`);
+        return;
+      }
       addInventory('Пылесос для привидений');
     }
     playSound(id === 'camera' ? 'camera' : 'interact');
@@ -493,6 +501,7 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
       setAction(null);
       setCameraViewer({ open: false, index: 0 });
       setExitOpen(false);
+      setGhostCabinetUnlocked(false);
       viewYawRef.current = 0.28;
       jumpscareTimerRef.current = null;
     }, 1400);
@@ -548,7 +557,12 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
       return;
     }
 
-    if (closest.id === 'ghostVacuum' && !inventory.includes('Ключ от стеклянной полки') && !itemIsInWorld('Пылесос для привидений')) {
+    if (
+      closest.id === 'ghostVacuum' &&
+      !ghostCabinetUnlocked &&
+      !inventory.includes('Ключ от стеклянной полки') &&
+      !itemIsInWorld('Пылесос для привидений')
+    ) {
       beginAction(
         closest.id,
         () => inspectFreeHotspot(closest.id),
@@ -571,14 +585,43 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
     }
 
     if (closest.id === 'ghostVacuum') {
+      if (itemIsInWorld('Пылесос для привидений')) {
+        setMessage('Стеклянный шкаф пуст. Пылесос уже не внутри.');
+        return;
+      }
+
+      if (!ghostCabinetUnlocked && inventory.includes('Ключ от стеклянной полки')) {
+        beginAction(
+          closest.id,
+          () => {
+            setGhostCabinetUnlocked(true);
+            setMessage('Ключ щёлкнул в замке. Стеклянная дверца открыта, теперь можно снять пылесос.');
+          },
+          2600,
+          'vacuumUnlock',
+          'Ты вставляешь латунный ключ, проворачиваешь его и открываешь стеклянную дверцу.',
+        );
+        return;
+      }
+
+      if (!ghostCabinetUnlocked) {
+        setMessage('Стеклянная полка заперта. Сначала нужен ключ с улицы.');
+        return;
+      }
+
+      if (inventory.length > 0) {
+        setMessage(`Сначала выброси "${inventory[0]}", потом возьми пылесос.`);
+        return;
+      }
+
       beginAction(
         closest.id,
-        () => inspectFreeHotspot(closest.id),
-        3300,
-        inventory.includes('Ключ от стеклянной полки') ? 'vacuumUnlock' : 'ghostKey',
-        inventory.includes('Ключ от стеклянной полки')
-          ? 'Ты вставляешь латунный ключ в замок, открываешь стекло и снимаешь пылесос.'
-          : 'На стеклянной дверце замок. Ты тянешь её рукой, но она не открывается.',
+        () => {
+          addInventory('Пылесос для привидений');
+        },
+        2100,
+        'ghostVacuum',
+        'Ты просовываешь руки в открытый шкаф и снимаешь пылесос с крюка.',
       );
       return;
     }
@@ -626,6 +669,7 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
     setAction(null);
     setCameraViewer({ open: false, index: 0 });
     setExitOpen(false);
+    setGhostCabinetUnlocked(false);
     viewYawRef.current = 0.28;
   }
 
@@ -652,10 +696,10 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
         restartAfterShadowAttack();
         return;
       }
-      const next = moveShadowToward(current, target, 30);
+      const next = moveShadowToward(current, target, 24);
       shadowPointRef.current = next;
       setShadowPoint(next);
-    }, 260);
+    }, 300);
 
     return () => window.clearInterval(attack);
   }, [action?.target, active, ending, shadowAwake, shadowDefeated]);
@@ -690,6 +734,7 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
     lightOn,
     records,
     inventory,
+    ghostCabinetUnlocked,
     droppedItems,
     shadowPoint,
     shadowVisible,

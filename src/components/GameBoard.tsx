@@ -27,6 +27,7 @@ type Props = {
   fear: number;
   coffeeDrunk: boolean;
   inventory: string[];
+  ghostCabinetUnlocked: boolean;
   droppedItems: DroppedItem[];
   shadowPoint: Point;
   shadowVisible: boolean;
@@ -45,6 +46,7 @@ export function GameBoard({
   fear,
   coffeeDrunk,
   inventory,
+  ghostCabinetUnlocked,
   droppedItems,
   shadowPoint,
   shadowVisible,
@@ -66,6 +68,7 @@ export function GameBoard({
           fear={fear}
           coffeeDrunk={coffeeDrunk}
           inventory={inventory}
+          ghostCabinetUnlocked={ghostCabinetUnlocked}
           droppedItems={droppedItems}
           shadowPoint={shadowPoint}
           shadowVisible={shadowVisible}
