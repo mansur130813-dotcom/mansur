@@ -47,15 +47,9 @@ export default function App() {
 
   return (
     <main className="game-shell">
-      <header className="game-title">
-        <p className="eyebrow">Психологический 3D-хоррор</p>
-        <h1>Последняя папка</h1>
-      </header>
-
       <GameBoard
         player={game.player}
         lightOn={game.lightOn}
-        records={game.records}
         fear={game.fear}
         coffeeDrunk={game.coffeeDrunk}
         inventory={game.inventory}
@@ -66,19 +60,13 @@ export default function App() {
         shadowAttacking={game.shadowAttacking}
         actionActive={Boolean(game.action)}
         actionTarget={game.action?.target ?? null}
-        onMove={game.move}
-        onInteract={game.interact}
         onViewYawChange={game.setViewYaw}
       />
 
       <Hud
         objective={game.finalMode ? finalObjective : game.objective}
         fear={game.fear}
-        inventory={game.inventory}
-        message={game.message}
-        journal={game.journal}
         action={game.action}
-        onDropInventory={game.dropInventory}
         cameraFeeds={game.cameraFeeds}
         cameraViewer={game.cameraViewer}
         onPreviousCamera={game.previousCamera}

@@ -186,6 +186,10 @@ function objectiveAction(objectiveIndex: number, target: HotspotId): Pick<Action
   return actions[objectiveIndex] ?? { target, label: actionLabel(target) };
 }
 
+function lockedObjectiveMessage(currentTitle: string) {
+  return `Сейчас не время для этого. Текущее задание: ${currentTitle}.`;
+}
+
 function finalAction(id: HotspotId): Pick<ActionState, 'target' | 'label'> {
   if (id === 'incinerator') {
     return {
@@ -452,6 +456,7 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
 
   function confirmCameraFinding() {
     if (!cameraViewer.open) return;
+    setCameraViewer((current) => ({ ...current, open: false }));
     if (!finalMode && objective.target === 'camera') finishObjective();
     else setMessage('Ты отметил запись, но это пока не помогает текущему заданию.');
   }
@@ -548,6 +553,16 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
 
     if (closest.gap > reach) {
       setMessage('Слишком далеко. Подойди ближе к предмету.');
+      return;
+    }
+
+    const allowedSecretTarget = finalMode && (closest.id === 'ghostKey' || closest.id === 'ghostVacuum');
+    if (!finalMode && closest.id !== objective.target) {
+      setMessage(lockedObjectiveMessage(objective.title));
+      return;
+    }
+    if (finalMode && !allowedSecretTarget && !['redFolder', 'exit', 'gate', 'incinerator'].includes(closest.id)) {
+      setMessage('Финальное время пришло только для выхода, красной папки, урны и секретных предметов.');
       return;
     }
 

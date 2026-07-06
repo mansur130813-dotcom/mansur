@@ -23,7 +23,6 @@ type ActionTarget =
 type Props = {
   player: Point;
   lightOn: boolean;
-  records: number;
   fear: number;
   coffeeDrunk: boolean;
   inventory: string[];
@@ -34,15 +33,12 @@ type Props = {
   shadowAttacking: boolean;
   actionActive: boolean;
   actionTarget: ActionTarget | null;
-  onMove: (dx: number, dy: number) => void;
-  onInteract: () => void;
   onViewYawChange: (yaw: number) => void;
 };
 
 export function GameBoard({
   player,
   lightOn,
-  records,
   fear,
   coffeeDrunk,
   inventory,
@@ -53,8 +49,6 @@ export function GameBoard({
   shadowAttacking,
   actionActive,
   actionTarget,
-  onMove,
-  onInteract,
   onViewYawChange,
 }: Props) {
   const dangerClass = fear > 78 ? 'panic' : fear > 48 ? 'uneasy' : 'calm';
@@ -80,14 +74,6 @@ export function GameBoard({
         {fear > 35 && <div className="footstep-trail" />}
         <div className="static-noise" />
       </div>
-      <div className="touch-controls">
-        <button type="button" onClick={() => onMove(0, -1)}>↑</button>
-        <button type="button" onClick={() => onMove(-1, 0)}>←</button>
-        <button type="button" onClick={onInteract}>E</button>
-        <button type="button" onClick={() => onMove(1, 0)}>→</button>
-        <button type="button" onClick={() => onMove(0, 1)}>↓</button>
-      </div>
-      <p className="record-counter">Скрытые записи: {records}/3</p>
     </section>
   );
 }

@@ -303,24 +303,6 @@ input:focus {
   box-shadow: inset 0 34px 0 rgba(159, 48, 45, 0.75), 0 0 80px #9f302d;
 }
 
-.game-title {
-  position: fixed;
-  top: 14px;
-  left: 18px;
-  z-index: 12;
-  pointer-events: none;
-}
-
-.game-title h1 {
-  display: none;
-}
-
-.game-title .eyebrow {
-  margin: 0;
-  color: rgba(241, 221, 176, 0.72);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
-}
-
 .ending-card h1 {
   margin-bottom: 0;
   font-size: clamp(38px, 7vw, 82px);
@@ -375,11 +357,11 @@ input:focus {
 }
 
 .uneasy .room {
-  animation: lightFlicker 5.8s infinite;
+  animation: none;
 }
 
 .panic .room {
-  animation: panicShake 1.8s infinite, lightFlicker 2.4s infinite;
+  animation: none;
 }
 
 .room::after {
@@ -387,13 +369,40 @@ input:focus {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at 50% 60%, transparent 0 185px, rgba(0, 0, 0, 0.58) 370px);
+  background:
+    radial-gradient(circle at 46% 42%, rgba(241, 221, 176, 0.16) 0 2px, transparent 3px),
+    radial-gradient(circle at 63% 30%, rgba(216, 161, 75, 0.12) 0 1px, transparent 2px),
+    radial-gradient(circle at 50% 60%, transparent 0 185px, rgba(0, 0, 0, 0.58) 370px);
+  background-size: 100% 100%, 68px 68px, 100% 100%;
   transition: background 180ms ease;
   z-index: 30;
 }
 
 .dark .room::after {
-  background: radial-gradient(circle at 50% 58%, transparent 0 92px, rgba(0, 0, 0, 0.9) 245px);
+  background:
+    radial-gradient(circle at 50% 43%, rgba(241, 221, 176, 0.24) 0 2px, transparent 3px),
+    radial-gradient(circle at 63% 30%, rgba(216, 161, 75, 0.16) 0 1px, transparent 2px),
+    radial-gradient(circle at 50% 58%, transparent 0 92px, rgba(0, 0, 0, 0.9) 245px);
+  background-size: 100% 100%, 58px 58px, 100% 100%;
+}
+
+.room::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 32;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 21px, rgba(246, 237, 218, 0.055) 21px 22px, transparent 22px 44px),
+    linear-gradient(0deg, transparent 0 17px, rgba(216, 161, 75, 0.04) 17px 18px, transparent 18px 36px);
+  background-size: 44px 44px, 36px 36px;
+  mix-blend-mode: screen;
+  opacity: 0.22;
+  animation: pixelDrift 7s steps(6) infinite;
+}
+
+.dark .room::before {
+  opacity: 0.32;
 }
 
 .floor-grid {
@@ -606,18 +615,22 @@ input:focus {
   inset: 0;
   z-index: 35;
   pointer-events: none;
-  background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px);
+  background-image:
+    radial-gradient(circle at 12% 32%, rgba(246, 237, 218, 0.18) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 66%, rgba(216, 161, 75, 0.13) 0 1px, transparent 2px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px);
+  background-size: 91px 79px, 127px 113px, auto;
   mix-blend-mode: screen;
-  opacity: 0.48;
+  opacity: 0.2;
+  animation: noiseSparkle 5.5s steps(4) infinite;
 }
 
 .uneasy .static-noise {
-  opacity: 0.64;
+  opacity: 0.28;
 }
 
 .panic .static-noise {
-  opacity: 0.9;
-  animation: noisePulse 0.45s infinite;
+  opacity: 0.36;
 }
 
 .footstep-trail {
@@ -632,32 +645,75 @@ input:focus {
     radial-gradient(ellipse at 74% 27%, rgba(225, 210, 174, 0.25) 0 8px, transparent 9px),
     radial-gradient(ellipse at 26% 49%, rgba(225, 210, 174, 0.18) 0 8px, transparent 9px),
     radial-gradient(ellipse at 70% 70%, rgba(225, 210, 174, 0.12) 0 8px, transparent 9px);
-  animation: footstepFade 2.2s infinite;
+  opacity: 0.5;
 }
 
-.touch-controls {
-  width: min(330px, 100%);
-  margin: 12px auto 0;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-}
-
-.record-counter {
-  margin: 10px 0 0;
-  color: var(--muted);
+.night-label {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  z-index: 22;
+  margin: 0;
+  padding: 8px 16px;
+  border: 1px solid rgba(216, 161, 75, 0.38);
+  border-radius: 8px;
+  background: rgba(10, 8, 7, 0.62);
+  color: rgba(246, 237, 218, 0.92);
+  font-size: 13px;
+  font-weight: 900;
   text-align: center;
+  text-shadow: 0 2px 12px #000;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  backdrop-filter: blur(8px);
+}
+
+.objective-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 22;
+  width: min(560px, calc(100vw - 40px));
+  border: 1px solid rgba(216, 161, 75, 0.24);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: rgba(10, 8, 7, 0.34);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+  text-align: center;
+  transform: translateX(-50%);
+  backdrop-filter: blur(3px);
+  pointer-events: none;
+}
+
+.objective-toast strong,
+.objective-toast span {
+  display: block;
+}
+
+.objective-toast strong {
+  margin-bottom: 4px;
+  color: rgba(246, 237, 218, 0.92);
+  font-size: 14px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.86);
+}
+
+.objective-toast span {
+  margin-bottom: 10px;
+  color: rgba(225, 210, 174, 0.86);
+  font-size: 13px;
+  line-height: 1.35;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.82);
 }
 
 .hud {
   position: fixed;
-  left: 18px;
-  top: 42px;
+  right: 18px;
+  top: 18px;
   bottom: 18px;
   z-index: 20;
   width: min(340px, calc(100vw - 36px));
   overflow-y: auto;
-  padding-right: 4px;
+  padding-left: 4px;
   display: grid;
   gap: 10px;
   align-content: start;
@@ -668,10 +724,10 @@ input:focus {
 .ending-card {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(18, 15, 13, 0.78);
+  background: rgba(18, 15, 13, 0.68);
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(7px);
   padding: 12px;
+  backdrop-filter: blur(8px);
 }
 
 .panel h2 {
@@ -686,28 +742,19 @@ input:focus {
   line-height: 1.35;
 }
 
-.message-panel {
-  min-height: 86px;
-  background: rgba(31, 25, 21, 0.82);
-}
-
-.journal p {
-  color: var(--muted);
-  font-size: 12px;
-}
-
 .fear-meter {
   height: 12px;
   overflow: hidden;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(74, 60, 48, 0.62);
   border-radius: 999px;
-  background: #0b0908;
+  background: rgba(11, 9, 8, 0.48);
 }
 
 .fear-meter span {
   display: block;
   height: 100%;
   background: linear-gradient(90deg, #d8a14b, #9f302d);
+  opacity: 0.84;
   transition: width 220ms ease;
 }
 
@@ -855,6 +902,28 @@ input:focus {
   50% {
     opacity: 0.28;
     transform: translateY(8px);
+  }
+}
+
+@keyframes pixelDrift {
+  0%,
+  100% {
+    background-position: 0 0, 0 0;
+  }
+
+  50% {
+    background-position: 18px 10px, -12px 20px;
+  }
+}
+
+@keyframes noiseSparkle {
+  0%,
+  100% {
+    background-position: 0 0, 0 0, 0 0;
+  }
+
+  50% {
+    background-position: 34px -22px, -48px 30px, 0 1px;
   }
 }
 
@@ -1011,7 +1080,7 @@ input:focus {
 
   .hud {
     width: min(320px, calc(100vw - 24px));
-    left: 12px;
+    right: 12px;
     top: 38px;
     bottom: 12px;
   }
@@ -1022,12 +1091,18 @@ input:focus {
     width: calc(100vw - 20px);
     left: 10px;
     right: 10px;
-    top: 36px;
+    top: 54px;
     bottom: auto;
-    max-height: 44vh;
+    max-height: 38vh;
   }
 
-  .touch-controls {
-    grid-template-columns: repeat(5, minmax(44px, 1fr));
+  .night-label {
+    top: 10px;
+    max-width: calc(100vw - 20px);
+  }
+
+  .objective-toast {
+    bottom: 10px;
+    max-width: calc(100vw - 20px);
   }
 }

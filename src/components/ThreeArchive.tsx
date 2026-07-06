@@ -81,6 +81,7 @@ type FirstPersonHandsParts = {
   rightSleeve: THREE.Mesh;
   leftHand: THREE.Mesh;
   rightHand: THREE.Mesh;
+  heldItemSlot: THREE.Group;
 };
 
 function actionPose(target: ActionTarget | null, motion: number): Pose {
@@ -459,27 +460,41 @@ function transparentBox(
   return mesh;
 }
 
-function labelSprite(text: string) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 64;
-  const context = canvas.getContext('2d');
-  if (context) {
-    context.fillStyle = 'rgba(18, 14, 10, 0.78)';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.strokeStyle = '#d8a14b';
-    context.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
-    context.fillStyle = '#f6edda';
-    context.font = '700 25px Arial';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(text, canvas.width / 2, canvas.height / 2);
+function createPixelDust() {
+  const count = 180;
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const color = new THREE.Color();
+
+  for (let i = 0; i < count; i += 1) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 1.2 + Math.random() * 9.2;
+    positions[i * 3] = Math.cos(angle) * radius;
+    positions[i * 3 + 1] = 0.5 + Math.random() * 2.9;
+    positions[i * 3 + 2] = Math.sin(angle) * (radius * 0.62);
+
+    color.set(i % 4 === 0 ? 0xf1ddb0 : 0x8f7c5a);
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
   }
 
-  const texture = new THREE.CanvasTexture(canvas);
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
-  sprite.scale.set(1.65, 0.42, 1);
-  return sprite;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  const material = new THREE.PointsMaterial({
+    size: 0.045,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.34,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+
+  const dust = new THREE.Points(geometry, material);
+  dust.userData.positions = positions;
+  return dust;
 }
 
 function addLabel(_scene: THREE.Scene, _text: string, _position: [number, number, number]) {
@@ -508,13 +523,19 @@ function addCoffee(scene: THREE.Scene) {
   );
   coffee.position.set(-0.62, 1.11, -1.9);
   scene.add(coffee);
-  const handle = new THREE.Mesh(
-    new THREE.TorusGeometry(0.13, 0.025, 8, 18, Math.PI),
-    new THREE.MeshStandardMaterial({ color: 0xe1d2ae, roughness: 0.55 }),
-  );
-  handle.position.set(-0.44, 1.0, -1.9);
-  handle.rotation.z = Math.PI / 2;
+  const cupMaterial = new THREE.MeshStandardMaterial({ color: 0xe1d2ae, roughness: 0.55 });
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.022, 10, 22), cupMaterial);
+  handle.position.set(-0.41, 1.0, -1.9);
+  handle.scale.set(0.72, 1.22, 1);
   scene.add(handle);
+
+  const upperHandleJoint = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 0.05), cupMaterial);
+  upperHandleJoint.position.set(-0.48, 1.06, -1.9);
+  scene.add(upperHandleJoint);
+
+  const lowerHandleJoint = upperHandleJoint.clone();
+  lowerHandleJoint.position.set(-0.48, 0.94, -1.9);
+  scene.add(lowerHandleJoint);
   addLabel(scene, 'КОФЕ', [0.82, 1.48, 1.38]);
   return coffee;
 }
@@ -587,13 +608,6 @@ function addFlashlightModel(scene: THREE.Scene) {
 
   box(group as unknown as THREE.Scene, [0.52, 0.12, 0.18], [0, 0, 0], 0x1b1a18);
   box(group as unknown as THREE.Scene, [0.16, 0.15, 0.22], [-0.25, 0, 0], 0xd8a14b);
-  const cone = new THREE.Mesh(
-    new THREE.ConeGeometry(0.18, 0.46, 24),
-    new THREE.MeshStandardMaterial({ color: 0x3a3020, roughness: 0.55 }),
-  );
-  cone.position.set(-0.34, 0, 0);
-  cone.rotation.z = Math.PI / 2;
-  group.add(cone);
   addLabel(scene, 'ФОНАРИК', [-2.12, 1.48, -3.9]);
   return group;
 }
@@ -605,10 +619,32 @@ function addCase417(scene: THREE.Scene) {
 
   box(group as unknown as THREE.Scene, [1.05, 0.62, 0.72], [0, 0, 0], 0x9b6a38);
   box(group as unknown as THREE.Scene, [1.12, 0.08, 0.78], [0, 0.37, 0], 0xc29b63);
-  const number = labelSprite('№417');
-  number.position.set(0, 0.47, -0.42);
-  number.scale.set(0.95, 0.26, 1);
-  group.add(number);
+  const labelCanvas = document.createElement('canvas');
+  labelCanvas.width = 256;
+  labelCanvas.height = 96;
+  const context = labelCanvas.getContext('2d');
+  if (context) {
+    context.fillStyle = '#d8c9a8';
+    context.fillRect(0, 0, labelCanvas.width, labelCanvas.height);
+    context.strokeStyle = '#5a3c29';
+    context.lineWidth = 10;
+    context.strokeRect(5, 5, labelCanvas.width - 10, labelCanvas.height - 10);
+    context.fillStyle = '#1c1510';
+    context.font = '900 48px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText('№417', labelCanvas.width / 2, labelCanvas.height / 2);
+  }
+
+  const labelTexture = new THREE.CanvasTexture(labelCanvas);
+  const label = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.66, 0.24),
+    new THREE.MeshBasicMaterial({ map: labelTexture }),
+  );
+  label.position.set(0, 0.414, -0.05);
+  label.rotation.x = -Math.PI / 2;
+  label.rotation.z = Math.PI;
+  group.add(label);
   return group;
 }
 
@@ -891,6 +927,21 @@ function createDroppedItemModel(item: string) {
     nozzle.position.set(0, 0, -0.38);
     nozzle.rotation.x = Math.PI / 2;
     group.add(nozzle);
+  } else if (item === 'Фонарик') {
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, 0.44, 16),
+      new THREE.MeshStandardMaterial({ color: 0x181716, roughness: 0.48, metalness: 0.18 }),
+    );
+    body.rotation.z = Math.PI / 2;
+    group.add(body);
+
+    const head = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.105, 0.07, 0.16, 18),
+      new THREE.MeshStandardMaterial({ color: 0xd8a14b, roughness: 0.38, metalness: 0.25 }),
+    );
+    head.position.set(-0.27, 0, 0);
+    head.rotation.z = Math.PI / 2;
+    group.add(head);
   } else {
     box(group as unknown as THREE.Scene, [0.42, 0.06, 0.3], [0, 0, 0], 0xd8c9a8);
   }
@@ -1053,6 +1104,40 @@ function createPerson(dark = false) {
   return group;
 }
 
+function createHeldItemModel(item: string) {
+  const group = createDroppedItemModel(item);
+
+  if (item === 'Ключ от стеклянной полки') {
+    group.scale.setScalar(0.72);
+    group.position.set(0.02, 0.02, -0.05);
+    group.rotation.set(0.25, -0.4, 0.9);
+  } else if (item === 'Пылесос для привидений') {
+    group.scale.setScalar(0.78);
+    group.position.set(0.02, -0.02, -0.08);
+    group.rotation.set(0.22, -0.45, -0.12);
+  } else if (item === 'Фонарик') {
+    group.scale.setScalar(0.82);
+    group.position.set(0, 0, -0.04);
+    group.rotation.set(0.1, -0.65, 0.12);
+  } else {
+    group.scale.set(0.74, 0.74, 0.74);
+    group.position.set(0.01, -0.02, -0.04);
+    group.rotation.set(-0.65, -0.22, 0.32);
+  }
+
+  return group;
+}
+
+function disposeObject(object: THREE.Object3D) {
+  object.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.geometry.dispose();
+      if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose());
+      else child.material.dispose();
+    }
+  });
+}
+
 function createFirstPersonHands() {
   const group = new THREE.Group();
   group.visible = false;
@@ -1064,6 +1149,7 @@ function createFirstPersonHands() {
   const rightSleeve = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.46, 8, 12), sleeveMaterial);
   const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.075, 14, 10), skinMaterial);
   const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.075, 14, 10), skinMaterial);
+  const heldItemSlot = new THREE.Group();
 
   leftSleeve.position.set(-0.22, -0.28, -0.54);
   rightSleeve.position.set(0.22, -0.28, -0.54);
@@ -1072,8 +1158,8 @@ function createFirstPersonHands() {
   leftSleeve.rotation.set(1.05, 0.18, -0.25);
   rightSleeve.rotation.set(1.05, -0.18, 0.25);
 
-  group.add(leftSleeve, rightSleeve, leftHand, rightHand);
-  group.userData.parts = { leftSleeve, rightSleeve, leftHand, rightHand } satisfies FirstPersonHandsParts;
+  group.add(leftSleeve, rightSleeve, leftHand, rightHand, heldItemSlot);
+  group.userData.parts = { leftSleeve, rightSleeve, leftHand, rightHand, heldItemSlot } satisfies FirstPersonHandsParts;
   return group;
 }
 
@@ -1092,6 +1178,11 @@ function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null,
   parts.rightHand.position.set(0.25, -0.45, -0.82);
   parts.leftSleeve.rotation.set(1.05, 0.18, -0.25);
   parts.rightSleeve.rotation.set(1.05, -0.18, 0.25);
+  parts.leftSleeve.visible = true;
+  parts.rightSleeve.visible = true;
+  parts.leftHand.visible = true;
+  parts.rightHand.visible = true;
+  parts.heldItemSlot.visible = false;
 
   switch (target) {
     case 'boxesUnpack':
@@ -1175,6 +1266,29 @@ function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null,
   }
 }
 
+function updateHeldItemHand(group: THREE.Group, motion: number) {
+  const parts = group.userData.parts as FirstPersonHandsParts;
+  const bob = Math.sin(motion * 2.4) * 0.015;
+
+  group.visible = true;
+  group.position.set(0, bob, 0);
+  group.rotation.set(0, 0, 0);
+
+  parts.leftSleeve.visible = false;
+  parts.leftHand.visible = false;
+  parts.rightSleeve.visible = true;
+  parts.rightHand.visible = true;
+  parts.heldItemSlot.visible = true;
+
+  parts.rightSleeve.position.set(0.27, -0.35 + bob, -0.58);
+  parts.rightHand.position.set(0.38, -0.47 + bob, -0.82);
+  parts.rightSleeve.rotation.set(1.18, -0.42, 0.34);
+  parts.rightHand.scale.setScalar(1);
+
+  parts.heldItemSlot.position.set(0.36, -0.43 + bob, -0.9);
+  parts.heldItemSlot.rotation.set(-0.18, -0.24, 0.18);
+}
+
 function createShadowSuctionEffect() {
   const group = new THREE.Group();
   group.visible = false;
@@ -1234,6 +1348,7 @@ export function ThreeArchive({
   const lampRef = useRef<THREE.PointLight | null>(null);
   const playerLightRef = useRef<THREE.PointLight | null>(null);
   const flashlightRef = useRef<THREE.SpotLight | null>(null);
+  const pixelDustRef = useRef<THREE.Points | null>(null);
   const coffeeLiquidRef = useRef<THREE.Object3D | null>(null);
   const exitDoorRef = useRef<THREE.Group | null>(null);
   const roomDoorsRef = useRef<THREE.Group[]>([]);
@@ -1259,20 +1374,31 @@ export function ThreeArchive({
     const mount = mountRef.current;
     if (!mount) return undefined;
 
+    const rotateView = (dx: number, dy: number) => {
+      cameraYawRef.current -= dx * 0.006;
+      cameraPitchRef.current = THREE.MathUtils.clamp(cameraPitchRef.current + dy * 0.0025, -0.72, 0.72);
+      onViewYawChange(cameraYawRef.current);
+    };
+
     const onPointerDown = (event: PointerEvent) => {
       draggingRef.current = true;
       pointerRef.current = { x: event.clientX, y: event.clientY };
       mount.setPointerCapture(event.pointerId);
+      if (document.pointerLockElement !== mount) mount.requestPointerLock();
     };
 
     const onPointerMove = (event: PointerEvent) => {
+      if (document.pointerLockElement === mount) return;
       if (!draggingRef.current) return;
       const dx = event.clientX - pointerRef.current.x;
       const dy = event.clientY - pointerRef.current.y;
       pointerRef.current = { x: event.clientX, y: event.clientY };
-      cameraYawRef.current -= dx * 0.006;
-      cameraPitchRef.current = THREE.MathUtils.clamp(cameraPitchRef.current + dy * 0.0025, -0.72, 0.72);
-      onViewYawChange(cameraYawRef.current);
+      rotateView(dx, dy);
+    };
+
+    const onLockedMouseMove = (event: MouseEvent) => {
+      if (document.pointerLockElement !== mount) return;
+      rotateView(event.movementX, event.movementY);
     };
 
     const onPointerUp = (event: PointerEvent) => {
@@ -1284,6 +1410,7 @@ export function ThreeArchive({
     mount.addEventListener('pointermove', onPointerMove);
     mount.addEventListener('pointerup', onPointerUp);
     mount.addEventListener('pointercancel', onPointerUp);
+    document.addEventListener('mousemove', onLockedMouseMove);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0908);
@@ -1302,7 +1429,18 @@ export function ThreeArchive({
       antialias: false,
       powerPreference: 'high-performance',
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.1));
+    const minPixelRatio = 0.9;
+    const maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.45);
+    let adaptivePixelRatio = maxPixelRatio;
+    const setRenderPixelRatio = (value: number) => {
+      const next = THREE.MathUtils.clamp(value, minPixelRatio, maxPixelRatio);
+      if (Math.abs(next - adaptivePixelRatio) < 0.04) return;
+      adaptivePixelRatio = next;
+      renderer.setPixelRatio(adaptivePixelRatio);
+      renderer.setSize(mount.clientWidth, mount.clientHeight || mount.clientWidth * 0.6, false);
+    };
+
+    renderer.setPixelRatio(adaptivePixelRatio);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.35;
@@ -1411,6 +1549,20 @@ export function ThreeArchive({
     scene.add(lamp);
     lampRef.current = lamp;
 
+    const deskWarmth = new THREE.PointLight(0xffd08a, 1.15, 5.8);
+    deskWarmth.position.set(-1.2, 1.7, -2.2);
+    scene.add(deskWarmth);
+
+    const shelfGlints = [
+      [-7.35, 1.8, -3.85],
+      [7.15, 1.8, -3.85],
+    ] as const;
+    shelfGlints.forEach((position) => {
+      const glint = new THREE.PointLight(0xe1d2ae, 0.42, 3.2);
+      glint.position.set(position[0], position[1], position[2]);
+      scene.add(glint);
+    });
+
     const cameraGlow = new THREE.PointLight(0x7bb89b, 0.9, 5);
     cameraGlow.position.set(6.2, 1.8, 1.2);
     scene.add(cameraGlow);
@@ -1446,6 +1598,10 @@ export function ThreeArchive({
     scene.add(flashlight);
     flashlightRef.current = flashlight;
 
+    const pixelDust = createPixelDust();
+    scene.add(pixelDust);
+    pixelDustRef.current = pixelDust;
+
     const resize = () => {
       const width = mount.clientWidth;
       const height = mount.clientHeight || width * 0.6;
@@ -1460,14 +1616,33 @@ export function ThreeArchive({
     let frame = 0;
     let animation = 0;
     let lastFrameAt = 0;
+    let perfWindowStartedAt = 0;
+    let perfFrameCount = 0;
+    let perfElapsed = 0;
     const frameInterval = 1000 / 45;
     const cameraGoal = new THREE.Vector3();
     const lookGoal = new THREE.Vector3();
     const animate = (timestamp = 0) => {
       animation = requestAnimationFrame(animate);
-      if (timestamp - lastFrameAt < frameInterval) return;
+      const frameDelta = lastFrameAt ? timestamp - lastFrameAt : frameInterval;
+      if (frameDelta < frameInterval) return;
       lastFrameAt = timestamp;
       frame += 0.022;
+
+      perfFrameCount += 1;
+      perfElapsed += frameDelta;
+      if (!perfWindowStartedAt) perfWindowStartedAt = timestamp;
+      if (timestamp - perfWindowStartedAt > 1000) {
+        const averageFrameMs = perfElapsed / perfFrameCount;
+        if (averageFrameMs > 30 && adaptivePixelRatio > minPixelRatio) {
+          setRenderPixelRatio(adaptivePixelRatio - 0.12);
+        } else if (averageFrameMs < 24 && adaptivePixelRatio < maxPixelRatio) {
+          setRenderPixelRatio(adaptivePixelRatio + 0.08);
+        }
+        perfWindowStartedAt = timestamp;
+        perfFrameCount = 0;
+        perfElapsed = 0;
+      }
       if (exitDoorRef.current) {
         const doorOpening = actionActiveRef.current && actionTargetRef.current === 'exitUnlock';
         if (doorOpening) exitDoorOpenedRef.current = true;
@@ -1520,7 +1695,11 @@ export function ThreeArchive({
         const parts = playerRef.current.userData.parts as AnimatedPersonParts;
         if (firstPersonHandsRef.current) {
           if (working) updateFirstPersonHands(firstPersonHandsRef.current, actionTargetRef.current, workMotion);
-          else firstPersonHandsRef.current.visible = false;
+          else {
+            const handParts = firstPersonHandsRef.current.userData.parts as FirstPersonHandsParts;
+            if (handParts.heldItemSlot.children.length > 0) updateHeldItemHand(firstPersonHandsRef.current, frame);
+            else firstPersonHandsRef.current.visible = false;
+          }
         }
 
         playerRef.current.position.lerp(targetPosition, working ? 0.55 : 0.28);
@@ -1625,6 +1804,15 @@ export function ThreeArchive({
           }
         }
       }
+      if (pixelDustRef.current) {
+        const dust = pixelDustRef.current;
+        dust.rotation.y += 0.0009;
+        dust.rotation.x = Math.sin(frame * 0.28) * 0.012;
+        if (dust.material instanceof THREE.PointsMaterial) {
+          dust.material.opacity = lightOn ? 0.32 + Math.sin(frame * 0.8) * 0.05 : 0.48;
+          dust.material.size = lightOn ? 0.045 : 0.058;
+        }
+      }
       renderer.render(scene, camera);
     };
     animate();
@@ -1636,6 +1824,8 @@ export function ThreeArchive({
       mount.removeEventListener('pointermove', onPointerMove);
       mount.removeEventListener('pointerup', onPointerUp);
       mount.removeEventListener('pointercancel', onPointerUp);
+      document.removeEventListener('mousemove', onLockedMouseMove);
+      if (document.pointerLockElement === mount) document.exitPointerLock();
       renderer.dispose();
       mount.removeChild(renderer.domElement);
       scene.traverse((object) => {
@@ -1686,6 +1876,13 @@ export function ThreeArchive({
     hasGhostVacuumRef.current =
       inventory.includes('Пылесос для привидений') ||
       droppedItems.some((item) => item.item === 'Пылесос для привидений');
+
+    const handParts = firstPersonHandsRef.current?.userData.parts as FirstPersonHandsParts | undefined;
+    if (handParts) {
+      handParts.heldItemSlot.children.forEach(disposeObject);
+      handParts.heldItemSlot.clear();
+      if (inventory[0]) handParts.heldItemSlot.add(createHeldItemModel(inventory[0]));
+    }
 
     const movedItems = new Set([...inventory, ...droppedItems.map((item) => item.item)]);
     Object.entries(sourceItemRefs.current).forEach(([item, object]) => {
