@@ -151,6 +151,11 @@ input:focus {
   font-size: 14px;
 }
 
+.save-note {
+  color: var(--amber);
+  font-size: 13px;
+}
+
 .auth-switch {
   width: 100%;
   margin-top: 10px;
@@ -158,6 +163,37 @@ input:focus {
 
 .game-info {
   margin-top: 18px;
+}
+
+.menu-achievements {
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(18, 15, 13, 0.55);
+}
+
+.menu-achievements-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.menu-achievements h2,
+.menu-achievements p {
+  margin: 0;
+}
+
+.menu-achievements h2 {
+  font-size: 18px;
+}
+
+.menu-achievements p {
+  color: var(--amber);
+  font-size: 14px;
+  font-weight: 900;
 }
 
 .game-shell {
@@ -357,11 +393,11 @@ input:focus {
 }
 
 .uneasy .room {
-  animation: none;
+  animation: lightFlicker 6.5s infinite;
 }
 
 .panic .room {
-  animation: none;
+  animation: panicShake 1.8s infinite, lightFlicker 2.6s infinite;
 }
 
 .room::after {
@@ -630,7 +666,8 @@ input:focus {
 }
 
 .panic .static-noise {
-  opacity: 0.36;
+  opacity: 0.48;
+  animation: noiseSparkle 2.8s steps(4) infinite, noisePulse 0.7s infinite;
 }
 
 .footstep-trail {
@@ -674,14 +711,15 @@ input:focus {
   left: 50%;
   z-index: 22;
   width: min(560px, calc(100vw - 40px));
-  border: 1px solid rgba(216, 161, 75, 0.24);
+  border: 1px solid rgba(216, 161, 75, 0.28);
   border-radius: 8px;
   padding: 12px 14px;
-  background: rgba(10, 8, 7, 0.34);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+  background: rgba(10, 8, 7, 0.48);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
   text-align: center;
   transform: translateX(-50%);
-  backdrop-filter: blur(3px);
+  opacity: 1;
+  backdrop-filter: blur(6px);
   pointer-events: none;
 }
 
@@ -692,14 +730,14 @@ input:focus {
 
 .objective-toast strong {
   margin-bottom: 4px;
-  color: rgba(246, 237, 218, 0.92);
+  color: rgba(246, 237, 218, 0.96);
   font-size: 14px;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.86);
 }
 
 .objective-toast span {
   margin-bottom: 10px;
-  color: rgba(225, 210, 174, 0.86);
+  color: rgba(225, 210, 174, 0.92);
   font-size: 13px;
   line-height: 1.35;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.82);
@@ -718,6 +756,10 @@ input:focus {
   gap: 10px;
   align-content: start;
   pointer-events: auto;
+}
+
+.camera-hud {
+  width: min(340px, calc(100vw - 36px));
 }
 
 .panel,
@@ -742,6 +784,23 @@ input:focus {
   line-height: 1.35;
 }
 
+.panel small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.status-panel {
+  border-color: rgba(79, 143, 120, 0.52);
+  background: rgba(12, 22, 19, 0.72);
+}
+
+.compact-panel p,
+.ai-panel p {
+  margin-bottom: 0;
+}
+
 .fear-meter {
   height: 12px;
   overflow: hidden;
@@ -761,6 +820,34 @@ input:focus {
 .action-panel {
   border-color: #8d6a3c;
   background: rgba(43, 34, 24, 0.86);
+}
+
+.clue-panel {
+  border-color: rgba(216, 161, 75, 0.42);
+  background: rgba(24, 19, 15, 0.62);
+}
+
+.clue-panel p {
+  color: rgba(225, 210, 174, 0.9);
+}
+
+.journal-panel {
+  background: rgba(21, 18, 16, 0.58);
+}
+
+.journal-panel p {
+  color: rgba(246, 237, 218, 0.78);
+}
+
+.uneasy .objective-toast,
+.uneasy .panel {
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38), 0 0 18px rgba(216, 161, 75, 0.08);
+}
+
+.panic .objective-toast,
+.panic .panel {
+  border-color: rgba(159, 48, 45, 0.5);
+  animation: fearTextJitter 1.05s steps(2) infinite;
 }
 
 .action-meter {
@@ -827,6 +914,64 @@ input:focus {
   margin-top: 10px;
 }
 
+.camera-hint {
+  margin-top: 8px;
+  color: #b7d8c8;
+}
+
+.badge-grid,
+.ending-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid rgba(74, 60, 48, 0.75);
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: rgba(8, 7, 6, 0.52);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.badge.unlocked {
+  border-color: rgba(79, 143, 120, 0.72);
+  background: rgba(20, 54, 43, 0.62);
+  color: #d6f2df;
+}
+
+.ai-panel button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.settings-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-panel label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--paper);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.settings-panel input[type="checkbox"] {
+  min-height: auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #4f8f78;
+}
+
 .ending-screen {
   min-height: 100vh;
   display: grid;
@@ -842,6 +987,10 @@ input:focus {
   color: var(--paper);
   font-size: 18px;
   line-height: 1.6;
+}
+
+.ending-list {
+  margin: 18px 0;
 }
 
 @keyframes pulse {
@@ -924,6 +1073,21 @@ input:focus {
 
   50% {
     background-position: 34px -22px, -48px 30px, 0 1px;
+  }
+}
+
+@keyframes fearTextJitter {
+  0%,
+  100% {
+    filter: contrast(1);
+  }
+
+  45% {
+    filter: contrast(1.08);
+  }
+
+  70% {
+    filter: contrast(0.96) brightness(1.05);
   }
 }
 

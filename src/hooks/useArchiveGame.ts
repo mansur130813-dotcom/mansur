@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   cameraFeeds,
   collisionRects,
@@ -25,28 +25,63 @@ const outsideMaxY = 1340;
 const exitCenterX = 450;
 const exitHalfWidth = 58;
 const pathHalfWidth = 92;
-const startMessage = 'WASD или стрелки - идти. E - взаимодействовать.';
+const startMessage = 'WASD или стрелки - идти. E - взаимодействовать. Q - бросить предмет.';
 const startJournal = '00:00. Смена началась. В журнале уже стоит твоя подпись.';
 
+export type GameSettings = {
+  hintsEnabled: boolean;
+  randomEventsEnabled: boolean;
+  reducedScares: boolean;
+  aiNotesEnabled: boolean;
+};
+
+export type Achievement = {
+  id: string;
+  title: string;
+  description: string;
+};
+
+export type GameSave = {
+  player: Point;
+  objectiveIndex: number;
+  lightOn: boolean;
+  records: number;
+  inventory: string[];
+  droppedItems: DroppedItem[];
+  message: string;
+  journal: string[];
+  clues: string[];
+  exitOpen: boolean;
+  ghostCabinetUnlocked: boolean;
+  shadowPoint: Point;
+  shadowAwake: boolean;
+  shadowDefeated: boolean;
+  achievements: string[];
+  endingsFound: Ending[];
+  aiNote: string;
+};
+
+type ActionTarget =
+  | HotspotId
+  | 'boxesUnpack'
+  | 'deskSort'
+  | 'deskOpen'
+  | 'coffeeMirror'
+  | 'shelvesDust'
+  | 'hallListen'
+  | 'cameraTune'
+  | 'redSeal'
+  | 'case417Read'
+  | 'flashlightBeam'
+  | 'incineratorBurn'
+  | 'exitUnlock'
+  | 'gateRun'
+  | 'keyTake'
+  | 'vacuumUnlock'
+  | 'vacuumSuck';
+
 type ActionState = {
-  target:
-    | HotspotId
-    | 'boxesUnpack'
-    | 'deskSort'
-    | 'deskOpen'
-    | 'coffeeMirror'
-    | 'shelvesDust'
-    | 'hallListen'
-    | 'cameraTune'
-    | 'redSeal'
-    | 'case417Read'
-    | 'flashlightBeam'
-    | 'incineratorBurn'
-    | 'exitUnlock'
-    | 'gateRun'
-    | 'keyTake'
-    | 'vacuumUnlock'
-    | 'vacuumSuck';
+  target: ActionTarget;
   label: string;
   progress: number;
 };
@@ -54,6 +89,23 @@ type ActionState = {
 type CameraViewerState = {
   open: boolean;
   index: number;
+};
+
+const achievementsList: Achievement[] = [
+  { id: 'first-night', title: 'Первая смена', description: 'Выполни первое задание архива.' },
+  { id: 'camera-truth', title: 'Камера не врёт', description: 'Найди правильную запись на мониторе.' },
+  { id: 'records', title: 'Три записи', description: 'Собери все скрытые записи.' },
+  { id: 'secret-tool', title: 'Необычный инвентарь', description: 'Добудь пылесос для привидений.' },
+  { id: 'good-ending', title: 'Выход найден', description: 'Получи хорошую концовку.' },
+  { id: 'bad-ending', title: 'Печать сломана', description: 'Получи плохую концовку.' },
+  { id: 'secret-ending', title: 'Все дела закрыты', description: 'Получи секретную концовку.' },
+];
+
+const defaultSettings: GameSettings = {
+  hintsEnabled: true,
+  randomEventsEnabled: true,
+  reducedScares: false,
+  aiNotesEnabled: true,
 };
 
 function distance(a: Point, b: Point) {
@@ -76,16 +128,13 @@ function canStandAt(point: Point) {
 
 function clampWalkTarget(point: Point, exitOpen: boolean, current?: Point): Point {
   const y = clamp(point.y, indoorMin, outsideMaxY);
-  if (!exitOpen && y > indoorMaxY) {
-    return { x: clamp(point.x, indoorMin, indoorMaxX), y: indoorMaxY };
-  }
+  if (!exitOpen && y > indoorMaxY) return { x: clamp(point.x, indoorMin, indoorMaxX), y: indoorMaxY };
   if (current && current.y <= indoorMaxY && y > indoorMaxY && Math.abs(current.x - exitCenterX) > exitHalfWidth) {
     return { x: clamp(point.x, indoorMin, indoorMaxX), y: indoorMaxY };
   }
 
   const outside = y > indoorMaxY;
   const halfWidth = y < roomSize.height + 56 ? exitHalfWidth : pathHalfWidth;
-
   return {
     x: outside ? clamp(point.x, exitCenterX - halfWidth, exitCenterX + halfWidth) : clamp(point.x, indoorMin, indoorMaxX),
     y,
@@ -118,7 +167,6 @@ function actionLabel(id: HotspotId) {
     ghostKey: 'Открываешь уличную полку и берёшь ключ',
     ghostVacuum: 'Открываешь стеклянный шкаф и берёшь пылесос',
   };
-
   return labels[id];
 }
 
@@ -137,52 +185,18 @@ function moveShadowToward(current: Point, target: Point, amount: number): Point 
 
 function objectiveAction(objectiveIndex: number, target: HotspotId): Pick<ActionState, 'target' | 'label'> {
   const actions: Partial<Record<number, Pick<ActionState, 'target' | 'label'>>> = {
-    0: {
-      target: 'boxesUnpack',
-      label: 'Снимаешь мокрую ленту, открываешь коробку и вытаскиваешь папку со своим именем.',
-    },
-    1: {
-      target: 'switch',
-      label: 'Нащупываешь выключатель одной рукой и включаешь свет, пока лампы щёлкают по очереди.',
-    },
-    2: {
-      target: 'deskSort',
-      label: 'Поднимаешь стопку документов, выравниваешь листы и опускаешь их на стол по номерам.',
-    },
-    3: {
-      target: 'deskOpen',
-      label: 'Одной рукой раскрываешь папку на столе и придерживаешь страницу, чтобы увидеть фотографию.',
-    },
-    4: {
-      target: 'coffeeMirror',
-      label: 'Подносишь чашку к лицу и смотришь в тёмное отражение кофе, прежде чем сделать глоток.',
-    },
-    5: {
-      target: 'hallListen',
-      label: 'Замираешь у коридора, прикладываешь руку к уху и шёпотом выдыхаешь: aaa.',
-    },
-    6: {
-      target: 'redSeal',
-      label: 'Берёшь красную папку с полки, проверяешь печать и говоришь: ok, let us check it.',
-    },
-    7: {
-      target: 'cameraTune',
-      label: 'Включаешь монитор, крутишь ручки и переключаешь каналы камер по всему архиву.',
-    },
-    8: {
-      target: 'shelvesDust',
-      label: 'Проводишь пальцами по пыльным полкам, находишь свежий след и вытаскиваешь дело №418.',
-    },
-    9: {
-      target: 'case417Read',
-      label: 'Срываешь верёвку с дела №417 и листаешь страницы, пока дата смерти не совпадает с завтрашним днём.',
-    },
-    10: {
-      target: 'flashlightBeam',
-      label: 'Вставляешь батарейку, щёлкаешь кнопкой и ведёшь лучом фонарика по стеллажам.',
-    },
+    0: { target: 'boxesUnpack', label: 'Снимаешь мокрую ленту, открываешь коробку и вытаскиваешь папку со своим именем.' },
+    1: { target: 'switch', label: 'Нащупываешь выключатель одной рукой и включаешь свет, пока лампы щёлкают по очереди.' },
+    2: { target: 'deskSort', label: 'Поднимаешь стопку документов, выравниваешь листы и опускаешь их на стол по номерам.' },
+    3: { target: 'deskOpen', label: 'Одной рукой раскрываешь папку на столе и придерживаешь страницу, чтобы увидеть фотографию.' },
+    4: { target: 'coffeeMirror', label: 'Подносишь чашку к лицу и смотришь в тёмное отражение кофе, прежде чем сделать глоток.' },
+    5: { target: 'hallListen', label: 'Замираешь у коридора, прикладываешь руку к уху и шёпотом выдыхаешь: aaa.' },
+    6: { target: 'redSeal', label: 'Берёшь красную папку с полки, проверяешь печать и говоришь: ok, let us check it.' },
+    7: { target: 'cameraTune', label: 'Включаешь монитор, крутишь ручки и переключаешь каналы камер по всему архиву.' },
+    8: { target: 'shelvesDust', label: 'Проводишь пальцами по пыльным полкам, находишь свежий след и вытаскиваешь дело №418.' },
+    9: { target: 'case417Read', label: 'Срываешь верёвку с дела №417 и листаешь страницы, пока дата смерти не совпадает с завтрашним днём.' },
+    10: { target: 'flashlightBeam', label: 'Вставляешь батарейку, щёлкаешь кнопкой и ведёшь лучом фонарика по стеллажам.' },
   };
-
   return actions[objectiveIndex] ?? { target, label: actionLabel(target) };
 }
 
@@ -190,62 +204,99 @@ function lockedObjectiveMessage(currentTitle: string) {
   return `Сейчас не время для этого. Текущее задание: ${currentTitle}.`;
 }
 
-function finalAction(id: HotspotId): Pick<ActionState, 'target' | 'label'> {
-  if (id === 'incinerator') {
-    return {
-      target: 'incineratorBurn',
-      label: 'Открываешь урну, кладёшь дело №417 внутрь и ждёшь, пока красный свет погаснет.',
-    };
-  }
-  if (id === 'exit') {
-    return {
-      target: 'exitUnlock',
-      label: 'Сверяешь три скрытые записи, вставляешь пустую папку №418 в щель и отпираешь дверь.',
-    };
-  }
-  if (id === 'redFolder') {
-    return {
-      target: 'redSeal',
-      label: 'Ломаешь красную печать, хотя архив будто задерживает твою руку.',
-    };
-  }
-  if (id === 'gate') {
-    return {
-      target: 'gateRun',
-      label: 'Ты толкаешь белые ворота плечом и выбегаешь на дорогу, не оглядываясь назад.',
-    };
-  }
+function clueForObjective(index: number) {
+  const clues = [
+    'Улика: на мокрой ленте коробки отпечаток твоего пальца.',
+    'Улика: выключатель теплый, будто его включили за минуту до тебя.',
+    'Улика: в журнале один номер дела повторяется дважды.',
+    'Улика: фотография в папке сделана у входа в архив.',
+    'Улика: в кофе отражается плечо человека за твоей спиной.',
+    'Улика: шаги в коридоре останавливаются ровно тогда, когда ты замираешь.',
+    'Улика: красная печать отмечает не запрет, а выход.',
+    'Улика: камера 03 показывает не место, а очередь событий.',
+    'Улика: пустое дело №418 уже принято архивом.',
+    'Улика: в деле №417 дата смерти стоит завтрашним днем.',
+    'Улика: фонарик светит сильнее, когда свет в архиве гаснет.',
+  ];
+  return clues[index] ?? null;
+}
 
+function soundCueForTarget(target: HotspotId): SoundCue {
+  if (target === 'switch' || target === 'flashlight') return 'hintLight';
+  if (target === 'camera') return 'hintCamera';
+  if (target === 'hall') return 'hintSteps';
+  if (target === 'desk' || target === 'boxes' || target === 'shelves' || target === 'case417' || target === 'redFolder') return 'hintPaper';
+  return 'hintObject';
+}
+
+function finalAction(id: HotspotId): Pick<ActionState, 'target' | 'label'> {
+  if (id === 'incinerator') return { target: 'incineratorBurn', label: 'Открываешь урну, кладёшь дело №417 внутрь и ждёшь, пока красный свет погаснет.' };
+  if (id === 'exit') return { target: 'exitUnlock', label: 'Сверяешь три скрытые записи, вставляешь пустую папку №418 в щель и отпираешь дверь.' };
+  if (id === 'redFolder') return { target: 'redSeal', label: 'Ломаешь красную печать, хотя архив будто задерживает твою руку.' };
+  if (id === 'gate') return { target: 'gateRun', label: 'Ты толкаешь белые ворота плечом и выбегаешь на дорогу, не оглядываясь назад.' };
   return { target: id, label: actionLabel(id) };
+}
+
+function makeInitialSave(): GameSave {
+  return {
+    player: startPoint,
+    objectiveIndex: 0,
+    lightOn: true,
+    records: 0,
+    inventory: [],
+    droppedItems: [],
+    message: startMessage,
+    journal: [startJournal],
+    clues: [],
+    exitOpen: false,
+    ghostCabinetUnlocked: false,
+    shadowPoint: { x: 452, y: 92 },
+    shadowAwake: false,
+    shadowDefeated: false,
+    achievements: [],
+    endingsFound: [],
+    aiNote: '',
+  };
 }
 
 type GameOptions = {
   active: boolean;
   playSound: (cue: SoundCue) => void;
+  initialSave?: Partial<GameSave> | null;
+  settings?: GameSettings;
 };
 
-export function useArchiveGame({ active, playSound }: GameOptions) {
-  const [player, setPlayer] = useState(startPoint);
+export function useArchiveGame({ active, playSound, initialSave, settings = defaultSettings }: GameOptions) {
+  const initial = useMemo(() => ({ ...makeInitialSave(), ...initialSave }), [initialSave]);
+  const [player, setPlayer] = useState(initial.player);
   const viewYawRef = useRef(0.28);
   const lastMoveAtRef = useRef(0);
   const actionTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const actionIntervalRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
   const jumpscareTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
-  const [objectiveIndex, setObjectiveIndex] = useState(0);
-  const [lightOn, setLightOn] = useState(true);
-  const [records, setRecords] = useState(0);
-  const [inventory, setInventory] = useState<string[]>([]);
-  const [droppedItems, setDroppedItems] = useState<DroppedItem[]>([]);
-  const [message, setMessage] = useState(startMessage);
-  const [journal, setJournal] = useState<string[]>([startJournal]);
+  const objectiveHintTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const randomEventTimerRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
+  const appliedInitialSaveRef = useRef(false);
+  const [objectiveIndex, setObjectiveIndex] = useState(initial.objectiveIndex);
+  const [lightOn, setLightOn] = useState(initial.lightOn);
+  const [records, setRecords] = useState(initial.records);
+  const [inventory, setInventory] = useState<string[]>(initial.inventory);
+  const [droppedItems, setDroppedItems] = useState<DroppedItem[]>(initial.droppedItems);
+  const [message, setMessage] = useState(initial.message);
+  const [journal, setJournal] = useState<string[]>(initial.journal);
+  const [clues, setClues] = useState<string[]>(initial.clues);
+  const [objectiveHintVisible, setObjectiveHintVisible] = useState(false);
   const [ending, setEnding] = useState<Ending | null>(null);
+  const [endingsFound, setEndingsFound] = useState<Ending[]>(initial.endingsFound);
+  const [achievements, setAchievements] = useState<string[]>(initial.achievements);
+  const [aiNote, setAiNote] = useState(initial.aiNote);
   const [action, setAction] = useState<ActionState | null>(null);
   const [cameraViewer, setCameraViewer] = useState<CameraViewerState>({ open: false, index: 0 });
-  const [exitOpen, setExitOpen] = useState(false);
-  const [ghostCabinetUnlocked, setGhostCabinetUnlocked] = useState(false);
-  const [shadowPoint, setShadowPoint] = useState<Point>({ x: 452, y: 92 });
-  const [shadowAwake, setShadowAwake] = useState(false);
-  const [shadowDefeated, setShadowDefeated] = useState(false);
+  const [exitOpen, setExitOpen] = useState(initial.exitOpen);
+  const [ghostCabinetUnlocked, setGhostCabinetUnlocked] = useState(initial.ghostCabinetUnlocked);
+  const [shadowPoint, setShadowPoint] = useState<Point>(initial.shadowPoint);
+  const [shadowAwake, setShadowAwake] = useState(initial.shadowAwake);
+  const [shadowDefeated, setShadowDefeated] = useState(initial.shadowDefeated);
   const [jumpscare, setJumpscare] = useState(false);
   const playerRef = useRef(player);
   const shadowPointRef = useRef(shadowPoint);
@@ -255,8 +306,15 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
   const coffeeDrunk = objectiveIndex > 4;
   const fear = useMemo(() => {
     const base = finalMode ? 100 : objective.fear;
-    return clamp(base + (lightOn ? 0 : 8) + records * 2, 0, 100);
-  }, [finalMode, lightOn, objective.fear, records]);
+    const heldCaseFear = inventory.some((item) => item.includes('417')) ? 7 : 0;
+    return clamp(base + (lightOn ? 0 : 8) + records * 2 + heldCaseFear, 0, 100);
+  }, [finalMode, inventory, lightOn, objective.fear, records]);
+
+  const unlockedAchievements = achievementsList.filter((item) => achievements.includes(item.id));
+
+  function unlockAchievement(id: string) {
+    setAchievements((current) => (current.includes(id) ? current : [...current, id]));
+  }
 
   function addJournal(entry: string) {
     setJournal((current) => [entry, ...current].slice(0, 6));
@@ -271,6 +329,11 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
     jumpscareTimerRef.current = null;
   }
 
+  function clearObjectiveHintTimer() {
+    if (objectiveHintTimerRef.current) window.clearTimeout(objectiveHintTimerRef.current);
+    objectiveHintTimerRef.current = null;
+  }
+
   function beginAction(
     target: HotspotId,
     onComplete: () => void,
@@ -279,8 +342,10 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
     customLabel = actionLabel(target),
   ) {
     clearActionTimers();
+    clearObjectiveHintTimer();
     const startedAt = Date.now();
     const label = customLabel;
+    setObjectiveHintVisible(false);
     setAction({ target: poseTarget, label, progress: 0 });
     playSound('interact');
     if (target === 'hall') playSound('voiceAaa');
@@ -310,14 +375,7 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
 
     playSound('move');
     setPlayer((current) => {
-      const direct = clampWalkTarget(
-        {
-          x: current.x + worldDx * step,
-          y: current.y + worldDy * step,
-        },
-        exitOpen,
-        current,
-      );
+      const direct = clampWalkTarget({ x: current.x + worldDx * step, y: current.y + worldDy * step }, exitOpen, current);
       if (canStandAt(direct)) return direct;
 
       const slideX = clampWalkTarget({ x: direct.x, y: current.y }, exitOpen, current);
@@ -347,6 +405,7 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
 
     setInventory([item]);
     if (item === 'Пылесос для привидений') {
+      unlockAchievement('secret-tool');
       setShadowAwake(true);
       setShadowPoint({ x: 452, y: 92 });
       setMessage('Пылесос щёлкает и оживает. Силуэт в коридоре наконец замечает тебя.');
@@ -375,10 +434,19 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
   function finishObjective() {
     setMessage(objective.success);
     addJournal(`${objective.night}. ${objective.title}: выполнено.`);
+    const clue = clueForObjective(objectiveIndex);
+    if (clue) setClues((current) => [clue, ...current.filter((item) => item !== clue)].slice(0, 6));
     playSound(objective.target === 'camera' ? 'camera' : 'paper');
 
+    if (objectiveIndex === 0) unlockAchievement('first-night');
     if (objective.item) addInventory(objective.item);
-    if (objective.record) setRecords((count) => Math.min(3, count + 1));
+    if (objective.record) {
+      setRecords((count) => {
+        const next = Math.min(3, count + 1);
+        if (next >= 3) unlockAchievement('records');
+        return next;
+      });
+    }
     if (objective.target === 'switch') setLightOn(true);
     if (objective.blackout) {
       playSound('blackout');
@@ -412,7 +480,7 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
           ? 'Стеклянная дверца открыта. Можно снять пылесос, если руки свободны.'
           : inventory.includes('Ключ от стеклянной полки')
             ? 'Ключ дважды проворачивается. Стеклянная дверца открывается.'
-          : 'Пылесос заперт за стеклом. Нужен ключ с уличной полки.',
+            : 'Пылесос заперт за стеклом. Нужен ключ с уличной полки.',
     };
 
     if (id === 'switch') setLightOn((value) => !value);
@@ -431,7 +499,7 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
   function openCameraViewer() {
     playSound('camera');
     setCameraViewer({ open: true, index: 0 });
-    setMessage('Мониторы включились. Переключай камеры и ищи странности на записи.');
+    setMessage('Мониторы включились. Найди запись, где камера показывает не место, а очередь событий.');
   }
 
   function closeCameraViewer() {
@@ -440,33 +508,45 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
 
   function nextCamera() {
     playSound('camera');
-    setCameraViewer((current) => ({
-      open: true,
-      index: (current.index + 1) % cameraFeeds.length,
-    }));
+    setCameraViewer((current) => ({ open: true, index: (current.index + 1) % cameraFeeds.length }));
   }
 
   function previousCamera() {
     playSound('camera');
-    setCameraViewer((current) => ({
-      open: true,
-      index: (current.index - 1 + cameraFeeds.length) % cameraFeeds.length,
-    }));
+    setCameraViewer((current) => ({ open: true, index: (current.index - 1 + cameraFeeds.length) % cameraFeeds.length }));
   }
 
   function confirmCameraFinding() {
     if (!cameraViewer.open) return;
+    const feed = cameraFeeds[cameraViewer.index];
     setCameraViewer((current) => ({ ...current, open: false }));
-    if (!finalMode && objective.target === 'camera') finishObjective();
-    else setMessage('Ты отметил запись, но это пока не помогает текущему заданию.');
+    if (!finalMode && objective.target === 'camera') {
+      if (feed?.id === 'cam-03') {
+        unlockAchievement('camera-truth');
+        finishObjective();
+      } else {
+        setMessage('Это странно, но не главное. Ищи запись с человеком у твоего стола.');
+      }
+    } else {
+      setMessage('Ты отметил запись, но это пока не помогает текущему заданию.');
+    }
+  }
+
+  function recordEnding(found: Ending) {
+    setEndingsFound((current) => (current.includes(found) ? current : [...current, found]));
+    if (found === 'good') unlockAchievement('good-ending');
+    if (found === 'bad') unlockAchievement('bad-ending');
+    if (found === 'secret') unlockAchievement('secret-ending');
   }
 
   function chooseFinal(id: HotspotId) {
     if (id === 'redFolder') {
       playSound('ending');
+      recordEnding('bad');
       setEnding('bad');
     } else if (id === 'gate') {
       playSound('ending');
+      recordEnding('good');
       setEnding('good');
     } else if (id === 'incinerator' && inventory.includes('Личное дело №417')) {
       setMessage('Урна больше не спасает. Хороший выход теперь снаружи, через белые ворота.');
@@ -481,35 +561,41 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
     setShadowDefeated(true);
     setShadowAwake(false);
     playSound('ending');
+    recordEnding('secret');
     setEnding('secret');
   }
 
   function restartAfterShadowAttack() {
     clearActionTimers();
     setAction(null);
-    setJumpscare(true);
-    playSound('scream');
+    if (!settings.reducedScares) {
+      setJumpscare(true);
+      playSound('scream');
+    }
     jumpscareTimerRef.current = window.setTimeout(() => {
-      setPlayer(startPoint);
-      setObjectiveIndex(0);
-      setLightOn(true);
-      setRecords(0);
-      setInventory([]);
-      setDroppedItems([]);
-      setShadowPoint({ x: 452, y: 92 });
-      setShadowAwake(false);
-      setShadowDefeated(false);
+      const clean = makeInitialSave();
+      setPlayer(clean.player);
+      setObjectiveIndex(clean.objectiveIndex);
+      setLightOn(clean.lightOn);
+      setRecords(clean.records);
+      setInventory(clean.inventory);
+      setDroppedItems(clean.droppedItems);
+      setShadowPoint(clean.shadowPoint);
+      setShadowAwake(clean.shadowAwake);
+      setShadowDefeated(clean.shadowDefeated);
       setJumpscare(false);
-      setMessage('Силуэт поймал тебя. Архив начинает смену сначала.');
-      setJournal([startJournal]);
+      setMessage(settings.reducedScares ? 'Силуэт догнал тебя. Архив мягко возвращает смену к началу.' : 'Силуэт поймал тебя. Архив начинает смену сначала.');
+      setJournal(clean.journal);
+      setClues(clean.clues);
+      setObjectiveHintVisible(false);
       setEnding(null);
       setAction(null);
       setCameraViewer({ open: false, index: 0 });
-      setExitOpen(false);
-      setGhostCabinetUnlocked(false);
+      setExitOpen(clean.exitOpen);
+      setGhostCabinetUnlocked(clean.ghostCabinetUnlocked);
       viewYawRef.current = 0.28;
       jumpscareTimerRef.current = null;
-    }, 1400);
+    }, settings.reducedScares ? 300 : 1400);
   }
 
   function interact() {
@@ -540,6 +626,11 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
 
     if (closestDropped.id && closestDropped.gap <= reach) {
       pickDroppedItem(closestDropped.id);
+      return;
+    }
+
+    if (inventory.length > 0) {
+      setMessage(`Сначала выброси "${inventory[0]}" клавишей Q, потом делай задание.`);
       return;
     }
 
@@ -578,24 +669,12 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
       !inventory.includes('Ключ от стеклянной полки') &&
       !itemIsInWorld('Пылесос для привидений')
     ) {
-      beginAction(
-        closest.id,
-        () => inspectFreeHotspot(closest.id),
-        900,
-        'ghostKey',
-        'На стеклянной дверце замок. Ты тянешь её рукой, но она не открывается.',
-      );
+      beginAction(closest.id, () => inspectFreeHotspot(closest.id), 900, 'ghostKey', 'На стеклянной дверце замок. Ты тянешь её рукой, но она не открывается.');
       return;
     }
 
     if (closest.id === 'ghostKey') {
-      beginAction(
-        closest.id,
-        () => inspectFreeHotspot(closest.id),
-        2100,
-        'keyTake',
-        'Ты открываешь уличную полку, снимаешь ключ с крючка и крутишь его в пальцах.',
-      );
+      beginAction(closest.id, () => inspectFreeHotspot(closest.id), 2100, 'keyTake', 'Ты открываешь уличную полку, снимаешь ключ с крючка и крутишь его в пальцах.');
       return;
     }
 
@@ -624,16 +703,9 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
         return;
       }
 
-      if (inventory.length > 0) {
-        setMessage(`Сначала выброси "${inventory[0]}", потом возьми пылесос.`);
-        return;
-      }
-
       beginAction(
         closest.id,
-        () => {
-          addInventory('Пылесос для привидений');
-        },
+        () => addInventory('Пылесос для привидений'),
         2100,
         'ghostVacuum',
         'Ты просовываешь руки в открытый шкаф и снимаешь пылесос с крюка.',
@@ -642,7 +714,7 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
     }
 
     if (finalMode) {
-      const action = finalAction(closest.id);
+      const actionState = finalAction(closest.id);
       beginAction(
         closest.id,
         () => {
@@ -654,43 +726,125 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
           chooseFinal(closest.id);
         },
         3400,
-        action.target,
-        action.label,
+        actionState.target,
+        actionState.label,
       );
     } else if (closest.id === 'exit') {
       beginAction(closest.id, () => inspectFreeHotspot(closest.id), 1300);
-    } else if (closest.id === objective.target && closest.id === 'desk') {
-      const action = objectiveAction(objectiveIndex, closest.id);
-      beginAction(closest.id, finishObjective, 3200, action.target, action.label);
     } else if (closest.id === objective.target) {
-      const action = objectiveAction(objectiveIndex, closest.id);
-      beginAction(closest.id, finishObjective, 3200, action.target, action.label);
+      const actionState = objectiveAction(objectiveIndex, closest.id);
+      beginAction(closest.id, finishObjective, 3200, actionState.target, actionState.label);
+    } else {
+      beginAction(closest.id, () => inspectFreeHotspot(closest.id), 1300);
     }
-    else beginAction(closest.id, () => inspectFreeHotspot(closest.id), 1300);
   }
 
   function restart() {
     clearActionTimers();
-    setPlayer(startPoint);
-    setObjectiveIndex(0);
-    setLightOn(true);
-    setRecords(0);
-    setInventory([]);
-    setDroppedItems([]);
-    setMessage(startMessage);
-    setJournal([startJournal]);
+    const clean = makeInitialSave();
+    setPlayer(clean.player);
+    setObjectiveIndex(clean.objectiveIndex);
+    setLightOn(clean.lightOn);
+    setRecords(clean.records);
+    setInventory(clean.inventory);
+    setDroppedItems(clean.droppedItems);
+    setMessage(clean.message);
+    setJournal(clean.journal);
+    setClues(clean.clues);
+    setObjectiveHintVisible(false);
     setEnding(null);
     setJumpscare(false);
     setAction(null);
     setCameraViewer({ open: false, index: 0 });
-    setExitOpen(false);
-    setGhostCabinetUnlocked(false);
+    setExitOpen(clean.exitOpen);
+    setGhostCabinetUnlocked(clean.ghostCabinetUnlocked);
+    setShadowPoint(clean.shadowPoint);
+    setShadowAwake(clean.shadowAwake);
+    setShadowDefeated(clean.shadowDefeated);
+    setAiNote('');
+    viewYawRef.current = 0.28;
+  }
+
+  function applySave(next: Partial<GameSave>) {
+    const save = { ...makeInitialSave(), ...next };
+    clearActionTimers();
+    setPlayer(save.player);
+    setObjectiveIndex(save.objectiveIndex);
+    setLightOn(save.lightOn);
+    setRecords(save.records);
+    setInventory(save.inventory);
+    setDroppedItems(save.droppedItems);
+    setMessage(save.message);
+    setJournal(save.journal);
+    setClues(save.clues);
+    setObjectiveHintVisible(false);
+    setEnding(null);
+    setJumpscare(false);
+    setAction(null);
+    setCameraViewer({ open: false, index: 0 });
+    setExitOpen(save.exitOpen);
+    setGhostCabinetUnlocked(save.ghostCabinetUnlocked);
+    setShadowPoint(save.shadowPoint);
+    setShadowAwake(save.shadowAwake);
+    setShadowDefeated(save.shadowDefeated);
+    setAchievements(save.achievements);
+    setEndingsFound(save.endingsFound);
+    setAiNote(save.aiNote);
     viewYawRef.current = 0.28;
   }
 
   const setViewYaw = useCallback((yaw: number) => {
     viewYawRef.current = yaw;
   }, []);
+
+  const save = useMemo<GameSave>(
+    () => ({
+      player,
+      objectiveIndex,
+      lightOn,
+      records,
+      inventory,
+      droppedItems,
+      message,
+      journal,
+      clues,
+      exitOpen,
+      ghostCabinetUnlocked,
+      shadowPoint,
+      shadowAwake,
+      shadowDefeated,
+      achievements,
+      endingsFound,
+      aiNote,
+    }),
+    [
+      achievements,
+      aiNote,
+      clues,
+      droppedItems,
+      endingsFound,
+      exitOpen,
+      ghostCabinetUnlocked,
+      inventory,
+      journal,
+      lightOn,
+      message,
+      objectiveIndex,
+      player,
+      records,
+      shadowAwake,
+      shadowDefeated,
+      shadowPoint,
+    ],
+  );
+
+  useEffect(() => {
+    if (active && initialSave && !appliedInitialSaveRef.current) {
+      appliedInitialSaveRef.current = true;
+      applySave(initialSave);
+    }
+    if (!active) appliedInitialSaveRef.current = false;
+  }, [active, initialSave]);
 
   useEffect(() => {
     playerRef.current = player;
@@ -699,6 +853,45 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
   useEffect(() => {
     shadowPointRef.current = shadowPoint;
   }, [shadowPoint]);
+
+  useEffect(() => {
+    clearObjectiveHintTimer();
+    setObjectiveHintVisible(false);
+    if (!settings.hintsEnabled || !active || ending || action || jumpscare) return undefined;
+
+    objectiveHintTimerRef.current = window.setTimeout(() => {
+      setObjectiveHintVisible(true);
+      playSound(finalMode ? 'hintSteps' : soundCueForTarget(objective.target));
+      objectiveHintTimerRef.current = null;
+    }, 20000);
+
+    return clearObjectiveHintTimer;
+  }, [action, active, ending, finalMode, jumpscare, objective.target, objectiveIndex, playSound, settings.hintsEnabled]);
+
+  useEffect(() => {
+    if (!active || !settings.randomEventsEnabled || ending) return undefined;
+    const events = [
+      'Где-то щёлкнул замок, хотя все двери на месте.',
+      'На мониторе вспыхнуло твоё имя и сразу исчезло.',
+      'Одна папка на стеллаже выдвинулась ровно на ширину пальца.',
+      'Лампа над столом моргнула три раза, как будто отвечала.',
+    ];
+    randomEventTimerRef.current = window.setInterval(() => {
+      const event = events[Math.floor(Math.random() * events.length)];
+      setMessage(event);
+      addJournal(`Помеха: ${event}`);
+      if (Math.random() > 0.55) {
+        setLightOn((value) => !value);
+        window.setTimeout(() => setLightOn((value) => !value), 520);
+      }
+      playSound('hintObject');
+    }, 28000);
+
+    return () => {
+      if (randomEventTimerRef.current) window.clearInterval(randomEventTimerRef.current);
+      randomEventTimerRef.current = null;
+    };
+  }, [active, ending, playSound, settings.randomEventsEnabled]);
 
   useEffect(() => {
     if (!active || !shadowAwake || shadowDefeated || ending || action?.target === 'vacuumSuck') return undefined;
@@ -717,15 +910,23 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
     }, 300);
 
     return () => window.clearInterval(attack);
-  }, [action?.target, active, ending, shadowAwake, shadowDefeated]);
+  }, [action?.target, active, ending, shadowAwake, shadowDefeated, settings.reducedScares]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const keys: Record<string, [number, number]> = {
-        ArrowUp: [0, -1], w: [0, -1], ц: [0, -1],
-        ArrowDown: [0, 1], s: [0, 1], ы: [0, 1],
-        ArrowLeft: [-1, 0], a: [-1, 0], ф: [-1, 0],
-        ArrowRight: [1, 0], d: [1, 0], в: [1, 0],
+        ArrowUp: [0, -1],
+        w: [0, -1],
+        ц: [0, -1],
+        ArrowDown: [0, 1],
+        s: [0, 1],
+        ы: [0, 1],
+        ArrowLeft: [-1, 0],
+        a: [-1, 0],
+        ф: [-1, 0],
+        ArrowRight: [1, 0],
+        d: [1, 0],
+        в: [1, 0],
       };
       if (event.key === 'e' || event.key === 'у' || event.key === 'Enter') interact();
       else if (event.key === 'q' || event.key === 'й') dropInventory();
@@ -736,10 +937,16 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
     return () => window.removeEventListener('keydown', onKeyDown);
   });
 
-  useEffect(() => () => clearActionTimers(), []);
+  useEffect(
+    () => () => {
+      clearActionTimers();
+      clearObjectiveHintTimer();
+      if (randomEventTimerRef.current) window.clearInterval(randomEventTimerRef.current);
+    },
+    [],
+  );
 
-  const shadowVisible =
-    !shadowDefeated && (shadowAwake || objective.target === 'hall' || action?.target === 'hallListen' || finalMode);
+  const shadowVisible = !shadowDefeated && (shadowAwake || objective.target === 'hall' || action?.target === 'hallListen' || finalMode);
 
   return {
     player,
@@ -757,11 +964,19 @@ export function useArchiveGame({ active, playSound }: GameOptions) {
     jumpscare,
     message,
     journal,
+    clues,
+    objectiveHintVisible,
     ending,
+    endingsFound,
     fear,
     action,
     cameraFeeds,
     cameraViewer,
+    achievements: unlockedAchievements,
+    allAchievements: achievementsList,
+    aiNote,
+    setAiNote,
+    save,
     move,
     setViewYaw,
     interact,

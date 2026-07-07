@@ -1,8 +1,12 @@
 import { useState } from 'react';
+import type { Achievement } from '../hooks/useArchiveGame';
 import { Auth } from './Auth';
 
 type Props = {
   soundEnabled: boolean;
+  saveStatus: string;
+  achievements: Achievement[];
+  allAchievements: Achievement[];
   onGuestStart: () => void;
   onAuthenticated: () => void;
   onToggleSound: () => void;
@@ -10,6 +14,9 @@ type Props = {
 
 export function MenuScreen({
   soundEnabled,
+  saveStatus,
+  achievements,
+  allAchievements,
   onGuestStart,
   onAuthenticated,
   onToggleSound,
@@ -32,6 +39,7 @@ export function MenuScreen({
           <section className="guest-panel">
             <h2>Быстрый вход</h2>
             <p>Можно играть без аккаунта. Прогресс гостя не привязан к email.</p>
+            <p className="save-note">{saveStatus}</p>
             <div className="menu-actions">
               <button type="button" onClick={onGuestStart}>Играть как гость</button>
               <button type="button" className="quiet-button" onClick={onToggleSound}>
@@ -43,6 +51,23 @@ export function MenuScreen({
             </div>
           </section>
         </div>
+
+        <section className="menu-achievements">
+          <div className="menu-achievements-head">
+            <h2>Достижения</h2>
+            <p>{achievements.length}/{allAchievements.length}</p>
+          </div>
+          <div className="badge-grid">
+            {allAchievements.map((achievement) => {
+              const unlocked = achievements.some((item) => item.id === achievement.id);
+              return (
+                <span key={achievement.id} className={unlocked ? 'badge unlocked' : 'badge'} title={achievement.description}>
+                  {unlocked ? achievement.title : '???'}
+                </span>
+              );
+            })}
+          </div>
+        </section>
 
         {showInfo && (
           <section className="game-info">

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+﻿import { useRef, useState } from 'react';
 
 export type SoundCue =
   | 'move'
@@ -9,7 +9,12 @@ export type SoundCue =
   | 'ending'
   | 'scream'
   | 'voiceAaa'
-  | 'voiceCheck';
+  | 'voiceCheck'
+  | 'hintPaper'
+  | 'hintLight'
+  | 'hintCamera'
+  | 'hintSteps'
+  | 'hintObject';
 
 declare global {
   interface Window {
@@ -167,6 +172,23 @@ export function useGameSound() {
     if (cue === 'camera') makeOscillator(context, 'square', 66, 0.035, 0.28);
     if (cue === 'blackout') makeOscillator(context, 'sawtooth', 31, 0.06, 0.5);
     if (cue === 'ending') makeOscillator(context, 'sine', 28, 0.08, 0.9);
+    if (cue === 'hintPaper') {
+      makeNoiseBlast(context, 0.14, 0.035);
+      makeNoiseBlast(context, 0.1, 0.025, 0.16);
+    }
+    if (cue === 'hintLight') {
+      makeOscillator(context, 'triangle', 540, 0.028, 0.09);
+      makeOscillator(context, 'triangle', 760, 0.022, 0.08, 0.1);
+    }
+    if (cue === 'hintCamera') {
+      makeOscillator(context, 'square', 82, 0.03, 0.12);
+      makeNoiseBlast(context, 0.18, 0.028, 0.08);
+    }
+    if (cue === 'hintSteps') {
+      makeOscillator(context, 'sine', 72, 0.035, 0.07);
+      makeOscillator(context, 'sine', 58, 0.03, 0.08, 0.22);
+    }
+    if (cue === 'hintObject') makeOscillator(context, 'triangle', 260, 0.026, 0.18);
     if (cue === 'scream') {
       makeImpact(context);
       makeNoiseBlast(context, 0.34, 0.52);

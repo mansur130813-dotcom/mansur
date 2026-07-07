@@ -1,4 +1,4 @@
-export type Point = { x: number; y: number };
+﻿export type Point = { x: number; y: number };
 export type DroppedItem = { id: string; item: string; point: Point };
 export type CollisionRect = { x: number; y: number; width: number; height: number };
 export type CameraFeed = {

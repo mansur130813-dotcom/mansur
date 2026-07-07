@@ -33,6 +33,8 @@ type Props = {
   shadowAttacking: boolean;
   actionActive: boolean;
   actionTarget: ActionTarget | null;
+  currentTarget: HotspotId;
+  objectiveHintVisible: boolean;
   onViewYawChange: (yaw: number) => void;
 };
 
@@ -49,6 +51,8 @@ export function GameBoard({
   shadowAttacking,
   actionActive,
   actionTarget,
+  currentTarget,
+  objectiveHintVisible,
   onViewYawChange,
 }: Props) {
   const dangerClass = fear > 78 ? 'panic' : fear > 48 ? 'uneasy' : 'calm';
@@ -69,6 +73,8 @@ export function GameBoard({
           shadowAttacking={shadowAttacking}
           actionActive={actionActive}
           actionTarget={actionTarget}
+          currentTarget={currentTarget}
+          objectiveHintVisible={objectiveHintVisible}
           onViewYawChange={onViewYawChange}
         />
         {fear > 35 && <div className="footstep-trail" />}

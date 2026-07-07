@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 // Пример работы с базой: читаем, добавляем и удаляем свои записи.

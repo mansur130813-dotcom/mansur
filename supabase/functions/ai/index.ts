@@ -1,4 +1,4 @@
-// AI-функция на бесплатном ключе Google Gemini.
+﻿// AI-функция на бесплатном ключе Google Gemini.
 // Вызов с фронта: supabase.functions.invoke('ai', { body: { prompt, system } })
 //
 // Запуск (один раз):

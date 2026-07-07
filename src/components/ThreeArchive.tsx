@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+﻿import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { roomSize, type DroppedItem, type HotspotId, type Point } from '../gameData';
+import { hotspots, roomSize, type DroppedItem, type HotspotId, type Point } from '../gameData';
 
 type ActionTarget =
   | HotspotId
@@ -34,6 +34,8 @@ type Props = {
   shadowAttacking: boolean;
   actionActive: boolean;
   actionTarget: ActionTarget | null;
+  currentTarget: HotspotId;
+  objectiveHintVisible: boolean;
   onViewYawChange: (yaw: number) => void;
 };
 
@@ -429,6 +431,36 @@ function toWorld(point: Point) {
   };
 }
 
+function itemMatches(item: string | undefined, patterns: string[]) {
+  if (!item) return false;
+  return patterns.some((pattern) => item.includes(pattern));
+}
+
+function createTargetGlow() {
+  const group = new THREE.Group();
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(0.62, 0.018, 8, 48),
+    new THREE.MeshBasicMaterial({ color: 0xf1ddb0, transparent: true, opacity: 0.72, depthWrite: false }),
+  );
+  ring.rotation.x = Math.PI / 2;
+  group.add(ring);
+
+  const inner = new THREE.Mesh(
+    new THREE.CircleGeometry(0.42, 32),
+    new THREE.MeshBasicMaterial({ color: 0xd8a14b, transparent: true, opacity: 0.12, depthWrite: false }),
+  );
+  inner.rotation.x = -Math.PI / 2;
+  group.add(inner);
+
+  const light = new THREE.PointLight(0xf1ddb0, 1.1, 3.4);
+  light.position.set(0, 0.85, 0);
+  group.add(light);
+  group.userData.ring = ring;
+  group.userData.inner = inner;
+  group.userData.light = light;
+  return group;
+}
+
 function box(
   scene: THREE.Scene,
   size: [number, number, number],
@@ -461,7 +493,7 @@ function transparentBox(
 }
 
 function createPixelDust() {
-  const count = 180;
+  const count = 90;
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const color = new THREE.Color();
@@ -487,7 +519,7 @@ function createPixelDust() {
     size: 0.045,
     vertexColors: true,
     transparent: true,
-    opacity: 0.34,
+    opacity: 0.28,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
   });
@@ -861,7 +893,7 @@ function addGhostVacuumCabinet(scene: THREE.Scene) {
   const doorPivot = new THREE.Group();
   doorPivot.position.set(-10.36, 0.76, -0.58);
   const glassDoor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.055, 1.48, 1.2),
+    new THREE.BoxGeometry(0.055, 1.6, 1.46),
     new THREE.MeshStandardMaterial({
       color: 0x9fd4ff,
       roughness: 0.14,
@@ -870,7 +902,7 @@ function addGhostVacuumCabinet(scene: THREE.Scene) {
       depthWrite: false,
     }),
   );
-  glassDoor.position.set(0, 0.72, 0.6);
+  glassDoor.position.set(0, 0.72, 0.73);
   doorPivot.add(glassDoor);
 
   const lockBody = new THREE.Mesh(
@@ -1130,7 +1162,7 @@ function createHeldItemModel(item: string) {
 
 function disposeObject(object: THREE.Object3D) {
   object.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
+    if (child instanceof THREE.Mesh || child instanceof THREE.Points) {
       child.geometry.dispose();
       if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose());
       else child.material.dispose();
@@ -1266,13 +1298,16 @@ function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null,
   }
 }
 
-function updateHeldItemHand(group: THREE.Group, motion: number) {
+function updateHeldItemHand(group: THREE.Group, motion: number, item?: string) {
   const parts = group.userData.parts as FirstPersonHandsParts;
   const bob = Math.sin(motion * 2.4) * 0.015;
+  const heavy = itemMatches(item, ['Пылесос']);
+  const flashlight = itemMatches(item, ['Фонар']);
+  const caseFile = itemMatches(item, ['417']);
 
   group.visible = true;
-  group.position.set(0, bob, 0);
-  group.rotation.set(0, 0, 0);
+  group.position.set(heavy ? Math.sin(motion * 8) * 0.012 : 0, bob, 0);
+  group.rotation.set(0, 0, caseFile ? Math.sin(motion * 2.6) * 0.025 : 0);
 
   parts.leftSleeve.visible = false;
   parts.leftHand.visible = false;
@@ -1280,13 +1315,13 @@ function updateHeldItemHand(group: THREE.Group, motion: number) {
   parts.rightHand.visible = true;
   parts.heldItemSlot.visible = true;
 
-  parts.rightSleeve.position.set(0.27, -0.35 + bob, -0.58);
-  parts.rightHand.position.set(0.38, -0.47 + bob, -0.82);
-  parts.rightSleeve.rotation.set(1.18, -0.42, 0.34);
+  parts.rightSleeve.position.set(heavy ? 0.19 : 0.27, heavy ? -0.28 + bob : -0.35 + bob, heavy ? -0.62 : -0.58);
+  parts.rightHand.position.set(heavy ? 0.28 : 0.38, heavy ? -0.39 + bob : -0.47 + bob, heavy ? -0.92 : -0.82);
+  parts.rightSleeve.rotation.set(heavy ? 1.42 : 1.18, heavy ? -0.16 : -0.42, heavy ? 0.18 : 0.34);
   parts.rightHand.scale.setScalar(1);
 
-  parts.heldItemSlot.position.set(0.36, -0.43 + bob, -0.9);
-  parts.heldItemSlot.rotation.set(-0.18, -0.24, 0.18);
+  parts.heldItemSlot.position.set(flashlight ? 0.3 : 0.36, flashlight ? -0.38 + bob : -0.43 + bob, flashlight ? -0.98 : -0.9);
+  parts.heldItemSlot.rotation.set(flashlight ? -0.05 : -0.18, flashlight ? -0.52 : -0.24, flashlight ? 0.02 : 0.18);
 }
 
 function createShadowSuctionEffect() {
@@ -1337,6 +1372,8 @@ export function ThreeArchive({
   shadowAttacking,
   actionActive,
   actionTarget,
+  currentTarget,
+  objectiveHintVisible,
   onViewYawChange,
 }: Props) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -1344,6 +1381,7 @@ export function ThreeArchive({
   const doubleRef = useRef<THREE.Group | null>(null);
   const firstPersonHandsRef = useRef<THREE.Group | null>(null);
   const shadowSuctionRef = useRef<THREE.Group | null>(null);
+  const targetGlowRef = useRef<THREE.Group | null>(null);
   const playerTargetRef = useRef(new THREE.Vector3(0, personGroundY, 0));
   const lampRef = useRef<THREE.PointLight | null>(null);
   const playerLightRef = useRef<THREE.PointLight | null>(null);
@@ -1358,6 +1396,9 @@ export function ThreeArchive({
   const droppedLayerRef = useRef<THREE.Group | null>(null);
   const actionActiveRef = useRef(actionActive);
   const actionTargetRef = useRef<ActionTarget | null>(actionTarget);
+  const currentTargetRef = useRef(currentTarget);
+  const objectiveHintVisibleRef = useRef(objectiveHintVisible);
+  const heldItemRef = useRef<string | undefined>(inventory[0]);
   const shadowPointRef = useRef(shadowPoint);
   const shadowVisibleRef = useRef(shadowVisible);
   const shadowAttackingRef = useRef(shadowAttacking);
@@ -1429,8 +1470,8 @@ export function ThreeArchive({
       antialias: false,
       powerPreference: 'high-performance',
     });
-    const minPixelRatio = 0.9;
-    const maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.45);
+    const minPixelRatio = 0.7;
+    const maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.18);
     let adaptivePixelRatio = maxPixelRatio;
     const setRenderPixelRatio = (value: number) => {
       const next = THREE.MathUtils.clamp(value, minPixelRatio, maxPixelRatio);
@@ -1463,18 +1504,18 @@ export function ThreeArchive({
     scene.add(floor);
 
     box(scene, [22, 4.2, 0.28], [0, 2.1, -6.7], 0x241b16);
-    transparentBox(scene, [9.9, 4.2, 0.28], [-6.05, 2.1, 6.7], 0x241b16, 0.62);
-    transparentBox(scene, [9.9, 4.2, 0.28], [6.05, 2.1, 6.7], 0x241b16, 0.62);
-    transparentBox(scene, [2.2, 1.7, 0.28], [0, 3.35, 6.7], 0x241b16, 0.62);
+    box(scene, [9.9, 4.2, 0.28], [-6.05, 2.1, 6.7], 0x241b16);
+    box(scene, [9.9, 4.2, 0.28], [6.05, 2.1, 6.7], 0x241b16);
+    box(scene, [2.2, 1.7, 0.28], [0, 3.35, 6.7], 0x241b16);
     box(scene, [0.28, 4.2, 13.2], [-11.1, 2.1, 0], 0x241b16);
     box(scene, [0.28, 4.2, 13.2], [11.1, 2.1, 0], 0x241b16);
     transparentBox(scene, [22.4, 0.34, 13.6], [0, 4.35, 0], 0x12100e, 0.32);
-    transparentBox(scene, [0.22, 4.35, 5.75], [-3.0, 2.17, -3.825], 0x1c1511, 0.72);
-    transparentBox(scene, [0.22, 4.35, 5.75], [-3.0, 2.17, 3.825], 0x1c1511, 0.72);
-    transparentBox(scene, [0.22, 1.3, 2.35], [-3.0, 3.7, 0], 0x1c1511, 0.72);
-    transparentBox(scene, [0.22, 4.35, 5.75], [3.0, 2.17, -3.825], 0x1c1511, 0.72);
-    transparentBox(scene, [0.22, 4.35, 5.75], [3.0, 2.17, 3.825], 0x1c1511, 0.72);
-    transparentBox(scene, [0.22, 1.3, 2.35], [3.0, 3.7, 0], 0x1c1511, 0.72);
+    box(scene, [0.22, 4.35, 5.75], [-3.0, 2.17, -3.825], 0x1c1511);
+    box(scene, [0.22, 4.35, 5.75], [-3.0, 2.17, 3.825], 0x1c1511);
+    box(scene, [0.22, 2.0, 2.35], [-3.0, 3.35, 0], 0x1c1511);
+    box(scene, [0.22, 4.35, 5.75], [3.0, 2.17, -3.825], 0x1c1511);
+    box(scene, [0.22, 4.35, 5.75], [3.0, 2.17, 3.825], 0x1c1511);
+    box(scene, [0.22, 2.0, 2.35], [3.0, 3.35, 0], 0x1c1511);
     roomDoorsRef.current = [addRoomDoor(scene, -3.02, true), addRoomDoor(scene, 3.02, false)];
     addLabel(scene, 'ROOM 1', [-5.9, 2.35, -4.65]);
     addLabel(scene, 'ROOM 2', [5.9, 2.35, -4.65]);
@@ -1538,6 +1579,10 @@ export function ThreeArchive({
     scene.add(shadowSuction);
     shadowSuctionRef.current = shadowSuction;
 
+    const targetGlow = createTargetGlow();
+    scene.add(targetGlow);
+    targetGlowRef.current = targetGlow;
+
     const ambient = new THREE.AmbientLight(0x8a7356, 0.75);
     scene.add(ambient);
 
@@ -1549,29 +1594,19 @@ export function ThreeArchive({
     scene.add(lamp);
     lampRef.current = lamp;
 
-    const deskWarmth = new THREE.PointLight(0xffd08a, 1.15, 5.8);
+    const deskWarmth = new THREE.PointLight(0xffd08a, 0.72, 4.6);
     deskWarmth.position.set(-1.2, 1.7, -2.2);
     scene.add(deskWarmth);
 
-    const shelfGlints = [
-      [-7.35, 1.8, -3.85],
-      [7.15, 1.8, -3.85],
-    ] as const;
-    shelfGlints.forEach((position) => {
-      const glint = new THREE.PointLight(0xe1d2ae, 0.42, 3.2);
-      glint.position.set(position[0], position[1], position[2]);
-      scene.add(glint);
-    });
-
-    const cameraGlow = new THREE.PointLight(0x7bb89b, 0.9, 5);
+    const cameraGlow = new THREE.PointLight(0x7bb89b, 0.62, 4.2);
     cameraGlow.position.set(6.2, 1.8, 1.2);
     scene.add(cameraGlow);
 
-    const redFolderGlow = new THREE.PointLight(0xbf2f2f, 1.2, 3.8);
+    const redFolderGlow = new THREE.PointLight(0xbf2f2f, 0.86, 3.2);
     redFolderGlow.position.set(1.9, 1.95, -4.18);
     scene.add(redFolderGlow);
 
-    const exitGlow = new THREE.PointLight(0xd8a14b, 1.1, 4.5);
+    const exitGlow = new THREE.PointLight(0xd8a14b, 0.78, 3.9);
     exitGlow.position.set(0, 2.2, 4.7);
     scene.add(exitGlow);
 
@@ -1579,11 +1614,11 @@ export function ThreeArchive({
     moonGlow.position.set(-4, 7, 12);
     scene.add(moonGlow);
 
-    const pathGlow = new THREE.PointLight(0x9fb8c9, 1.25, 10);
+    const pathGlow = new THREE.PointLight(0x9fb8c9, 0.82, 8.2);
     pathGlow.position.set(0, 2.4, 9.8);
     scene.add(pathGlow);
 
-    const playerLight = new THREE.PointLight(0xf1ddb0, 3.2, 5.2);
+    const playerLight = new THREE.PointLight(0xf1ddb0, 2.25, 4.6);
     playerLight.position.set(0, 1.5, 0);
     scene.add(playerLight);
     playerLightRef.current = playerLight;
@@ -1619,7 +1654,7 @@ export function ThreeArchive({
     let perfWindowStartedAt = 0;
     let perfFrameCount = 0;
     let perfElapsed = 0;
-    const frameInterval = 1000 / 45;
+    const frameInterval = 1000 / 40;
     const cameraGoal = new THREE.Vector3();
     const lookGoal = new THREE.Vector3();
     const animate = (timestamp = 0) => {
@@ -1634,10 +1669,10 @@ export function ThreeArchive({
       if (!perfWindowStartedAt) perfWindowStartedAt = timestamp;
       if (timestamp - perfWindowStartedAt > 1000) {
         const averageFrameMs = perfElapsed / perfFrameCount;
-        if (averageFrameMs > 30 && adaptivePixelRatio > minPixelRatio) {
-          setRenderPixelRatio(adaptivePixelRatio - 0.12);
-        } else if (averageFrameMs < 24 && adaptivePixelRatio < maxPixelRatio) {
-          setRenderPixelRatio(adaptivePixelRatio + 0.08);
+        if (averageFrameMs > 31 && adaptivePixelRatio > minPixelRatio) {
+          setRenderPixelRatio(adaptivePixelRatio - 0.14);
+        } else if (averageFrameMs < 23 && adaptivePixelRatio < maxPixelRatio) {
+          setRenderPixelRatio(adaptivePixelRatio + 0.05);
         }
         perfWindowStartedAt = timestamp;
         perfFrameCount = 0;
@@ -1697,7 +1732,9 @@ export function ThreeArchive({
           if (working) updateFirstPersonHands(firstPersonHandsRef.current, actionTargetRef.current, workMotion);
           else {
             const handParts = firstPersonHandsRef.current.userData.parts as FirstPersonHandsParts;
-            if (handParts.heldItemSlot.children.length > 0) updateHeldItemHand(firstPersonHandsRef.current, frame);
+            if (handParts.heldItemSlot.children.length > 0) {
+              updateHeldItemHand(firstPersonHandsRef.current, frame, heldItemRef.current);
+            }
             else firstPersonHandsRef.current.visible = false;
           }
         }
@@ -1813,6 +1850,20 @@ export function ThreeArchive({
           dust.material.size = lightOn ? 0.045 : 0.058;
         }
       }
+      if (targetGlowRef.current) {
+        targetGlowRef.current.visible = objectiveHintVisibleRef.current && !actionActiveRef.current;
+        const target = hotspots[currentTargetRef.current];
+        const world = target ? toWorld(target) : { x: 0, z: 0 };
+        const pulse = 1 + Math.sin(frame * 3.4) * 0.08;
+        targetGlowRef.current.position.set(world.x, 0.055, world.z);
+        targetGlowRef.current.scale.setScalar(pulse);
+        const ring = targetGlowRef.current.userData.ring as THREE.Mesh | undefined;
+        const inner = targetGlowRef.current.userData.inner as THREE.Mesh | undefined;
+        const light = targetGlowRef.current.userData.light as THREE.PointLight | undefined;
+        if (ring?.material instanceof THREE.Material) ring.material.opacity = actionActiveRef.current ? 0.18 : 0.62;
+        if (inner?.material instanceof THREE.Material) inner.material.opacity = actionActiveRef.current ? 0.05 : 0.12;
+        if (light) light.intensity = actionActiveRef.current ? 0.35 : 0.9 + Math.sin(frame * 2.5) * 0.18;
+      }
       renderer.render(scene, camera);
     };
     animate();
@@ -1829,7 +1880,7 @@ export function ThreeArchive({
       renderer.dispose();
       mount.removeChild(renderer.domElement);
       scene.traverse((object) => {
-        if (object instanceof THREE.Mesh) {
+        if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
           object.geometry.dispose();
           if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose());
           else object.material.dispose();
@@ -1847,6 +1898,7 @@ export function ThreeArchive({
     const layer = droppedLayerRef.current;
     if (!layer) return;
 
+    layer.children.forEach(disposeObject);
     layer.clear();
     droppedItems.forEach((dropped) => {
       const model = createDroppedItemModel(dropped.item);
@@ -1866,12 +1918,21 @@ export function ThreeArchive({
   }, [actionTarget]);
 
   useEffect(() => {
+    currentTargetRef.current = currentTarget;
+  }, [currentTarget]);
+
+  useEffect(() => {
+    objectiveHintVisibleRef.current = objectiveHintVisible;
+  }, [objectiveHintVisible]);
+
+  useEffect(() => {
     shadowPointRef.current = shadowPoint;
     shadowVisibleRef.current = shadowVisible;
     shadowAttackingRef.current = shadowAttacking;
   }, [shadowAttacking, shadowPoint, shadowVisible]);
 
   useEffect(() => {
+    heldItemRef.current = inventory[0];
     hasGhostKeyRef.current = inventory.includes('Ключ от стеклянной полки');
     hasGhostVacuumRef.current =
       inventory.includes('Пылесос для привидений') ||
@@ -1900,10 +1961,11 @@ export function ThreeArchive({
       lampRef.current.distance = lightOn ? 12 : 4;
     }
     if (flashlightRef.current) {
-      flashlightRef.current.intensity = lightOn ? 0.12 : 3.2;
-      flashlightRef.current.distance = lightOn ? 4 : 10;
+      const holdingFlashlight = itemMatches(inventory[0], ['Фонар']);
+      flashlightRef.current.intensity = holdingFlashlight ? (lightOn ? 1.4 : 5.2) : lightOn ? 0.12 : 3.2;
+      flashlightRef.current.distance = holdingFlashlight ? (lightOn ? 7 : 13) : lightOn ? 4 : 10;
     }
-  }, [fear, lightOn]);
+  }, [fear, inventory, lightOn]);
 
   useEffect(() => {
     if (coffeeLiquidRef.current) coffeeLiquidRef.current.visible = !coffeeDrunk;
