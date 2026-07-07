@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
 const GOOGLE_LOGIN_PENDING_KEY = 'archive_google_login_pending';
 
 type Props = {
-  onAuthenticated: (auto?: boolean) => void;
+  onAuthenticated: (auto?: boolean, user?: User | null) => void;
 };
 
-function getAuthRedirectUrl(start?: 'google') {
-  const url = new URL(window.location.href);
-  if (start) url.searchParams.set('start', start);
-  return url.toString();
+function getAuthRedirectUrl() {
+  return `${window.location.origin}${window.location.pathname}`;
 }
 
 export function Auth({ onAuthenticated }: Props) {
@@ -24,11 +23,13 @@ export function Auth({ onAuthenticated }: Props) {
     let mounted = true;
 
     supabase.auth.getSession().then(({ data }) => {
-      if (mounted && data.session) onAuthenticated(true);
+      if (mounted && data.session) onAuthenticated(true, data.session.user);
     });
 
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) onAuthenticated(true);
+      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        onAuthenticated(true, session.user);
+      }
     });
 
     return () => {
@@ -43,33 +44,40 @@ export function Auth({ onAuthenticated }: Props) {
     setMessage('');
 
     try {
-      const { data, error } =
+      const signUpWithEmail = () =>
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: getAuthRedirectUrl(),
+          },
+        });
+
+      let result =
         mode === 'signup'
-          ? await supabase.auth.signUp({
-              email,
-              password,
-              options: {
-                emailRedirectTo: getAuthRedirectUrl(),
-              },
-            })
+          ? await signUpWithEmail()
           : await supabase.auth.signInWithPassword({ email, password });
 
-      if (error) {
-        setMessage(error.message);
+      if (mode === 'signin' && result.error?.message.toLowerCase().includes('invalid login credentials')) {
+        result = await signUpWithEmail();
+      }
+
+      if (result.error) {
+        setMessage(result.error.message);
         return;
       }
 
-      if (data.session) {
-        onAuthenticated(false);
+      if (result.data.session) {
+        onAuthenticated(false, result.data.session.user);
         return;
       }
 
-      if (mode === 'signin') {
-        setMessage('Вход не завершился. Проверь email/пароль или подтверди почту.');
+      if (result.data.user) {
+        onAuthenticated(false, result.data.user);
         return;
       }
 
-      setMessage('Аккаунт создан. Проверь почту, если Supabase попросит подтвердить email.');
+      setMessage('Вход не завершился. Проверь email, пароль или подтверждение почты.');
     } catch {
       setMessage('Что-то пошло не так. Попробуй ещё раз.');
     } finally {
@@ -83,7 +91,7 @@ export function Auth({ onAuthenticated }: Props) {
 
     const { data: current } = await supabase.auth.getSession();
     if (current.session) {
-      onAuthenticated(false);
+      onAuthenticated(false, current.session.user);
       setBusy(false);
       return;
     }
@@ -92,7 +100,7 @@ export function Auth({ onAuthenticated }: Props) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: getAuthRedirectUrl('google'),
+        redirectTo: getAuthRedirectUrl(),
       },
     });
 

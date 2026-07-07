@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import type { Achievement } from '../hooks/useArchiveGame';
 import { Auth } from './Auth';
 
@@ -8,7 +9,7 @@ type Props = {
   achievements: Achievement[];
   allAchievements: Achievement[];
   onGuestStart: () => void;
-  onAuthenticated: (auto?: boolean) => void;
+  onAuthenticated: (auto?: boolean, user?: User | null) => void;
   onToggleSound: () => void;
 };
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { EndingScreen } from './components/EndingScreen';
 import { GameBoard } from './components/GameBoard';
@@ -33,22 +33,9 @@ function isGoogleUser(user: User | null) {
   );
 }
 
-function shouldAutoStartFromGoogleReturn() {
-  if (sessionStorage.getItem(GOOGLE_LOGIN_PENDING_KEY) === '1') return true;
-  const params = new URLSearchParams(window.location.search);
-  return params.get('start') === 'google' || params.get('archiveStart') === 'google';
-}
-
-function clearGoogleReturnMarker() {
-  sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
-  const url = new URL(window.location.href);
-  url.searchParams.delete('start');
-  url.searchParams.delete('archiveStart');
-  if (url.href !== window.location.href) window.history.replaceState({}, '', url.toString());
-}
-
 export default function App() {
   const [started, setStarted] = useState(false);
+  const startedRef = useRef(false);
   const [user, setUser] = useState<User | null>(null);
   const [initialSave, setInitialSave] = useState<GameSave | null>(null);
   const [saveStatus, setSaveStatus] = useState('Гость: прогресс хранится только до перезапуска.');
@@ -60,23 +47,6 @@ export default function App() {
     initialSave,
     settings: defaultSettings,
   });
-
-  useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setUser(data.session?.user ?? null);
-    });
-
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => {
-      mounted = false;
-      data.subscription.unsubscribe();
-    };
-  }, []);
 
   const loadGoogleSave = useCallback(async (currentUser: User) => {
     const { data, error } = await supabase
@@ -96,7 +66,9 @@ export default function App() {
 
   const startGame = useCallback(
     async (nextUser: User | null = user, options: { startSound?: boolean } = {}) => {
-      if (started) return;
+      if (startedRef.current) return;
+      startedRef.current = true;
+
       if (options.startSound !== false) sound.start();
 
       if (isGoogleUser(nextUser) && nextUser) {
@@ -104,7 +76,7 @@ export default function App() {
         setInitialSave(save);
       } else if (nextUser) {
         setInitialSave(null);
-        setSaveStatus('Вход выполнен. Облачное сохранение включается только для Google-аккаунта.');
+        setSaveStatus('Вход выполнен. Можно играть.');
       } else {
         setInitialSave(null);
         setSaveStatus('Гость: прогресс хранится только до перезапуска.');
@@ -112,30 +84,55 @@ export default function App() {
 
       setStarted(true);
     },
-    [loadGoogleSave, sound, started, user],
+    [loadGoogleSave, sound, user],
   );
 
   const startAuthenticated = useCallback(
-    async (auto = false) => {
-      const { data } = await supabase.auth.getSession();
-      const nextUser = data.session?.user ?? null;
+    async (auto = false, knownUser?: User | null) => {
+      const nextUser =
+        knownUser ??
+        (await supabase.auth.getSession()).data.session?.user ??
+        null;
+
       setUser(nextUser);
 
       if (!nextUser) {
-        setSaveStatus('Сначала войди через email или Google.');
+        setSaveStatus('Вход не завершился. Попробуй email или Google ещё раз.');
         return;
       }
 
-      clearGoogleReturnMarker();
+      sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
       await startGame(nextUser, { startSound: !auto });
     },
     [startGame],
   );
 
   useEffect(() => {
-    if (started || !shouldAutoStartFromGoogleReturn()) return;
-    void startAuthenticated(true);
-  }, [startAuthenticated, started]);
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      const sessionUser = data.session?.user ?? null;
+      setUser(sessionUser);
+      if (sessionUser && sessionStorage.getItem(GOOGLE_LOGIN_PENDING_KEY) === '1') {
+        void startAuthenticated(true, sessionUser);
+      }
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      const sessionUser = session?.user ?? null;
+      setUser(sessionUser);
+
+      if (sessionUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        void startAuthenticated(true, sessionUser);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      data.subscription.unsubscribe();
+    };
+  }, [startAuthenticated]);
 
   function toggleSound() {
     if (sound.enabled) sound.stop();
@@ -167,7 +164,7 @@ export default function App() {
         achievements={game.achievements}
         allAchievements={game.allAchievements}
         onGuestStart={() => void startGame(null, { startSound: true })}
-        onAuthenticated={(auto) => void startAuthenticated(Boolean(auto))}
+        onAuthenticated={(auto, nextUser) => void startAuthenticated(Boolean(auto), nextUser)}
         onToggleSound={toggleSound}
       />
     );
