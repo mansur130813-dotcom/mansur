@@ -608,9 +608,18 @@ function addBoxes(scene: THREE.Scene) {
   const group = new THREE.Group();
   scene.add(group);
   box(group as unknown as THREE.Scene, [1.0, 0.55, 0.72], [-5.2, 0.28, 4.35], 0xa36e35);
-  const lid = box(group as unknown as THREE.Scene, [0.78, 0.035, 0.48], [-5.2, 0.552, 4.35], 0xa36e35);
-  lid.userData.closedX = lid.rotation.x;
-  group.userData.lid = lid;
+  const lidPivot = new THREE.Group();
+  lidPivot.position.set(-5.2, 0.552, 4.11);
+  group.add(lidPivot);
+  const lid = new THREE.Mesh(
+    new THREE.BoxGeometry(0.78, 0.035, 0.48),
+    new THREE.MeshStandardMaterial({ color: 0xa36e35, roughness: 0.78, metalness: 0.08 }),
+  );
+  lid.position.set(0, 0, 0.24);
+  lid.castShadow = true;
+  lid.receiveShadow = true;
+  lidPivot.add(lid);
+  group.userData.lidPivot = lidPivot;
   addLabel(scene, 'КОРОБКИ', [-5.25, 1.45, 4.15]);
   return group;
 }
@@ -1635,9 +1644,9 @@ export function ThreeArchive({
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0908);
-    scene.fog = new THREE.Fog(0x0a0908, 9, 20);
+    scene.fog = new THREE.Fog(0x0a0908, 12, 26);
 
-    const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.08, 100);
+    const camera = new THREE.PerspectiveCamera(64, 16 / 9, 0.08, 100);
     camera.position.set(0, 1.3, 0);
     camera.lookAt(0, 0, 0);
     scene.add(camera);
@@ -1650,8 +1659,8 @@ export function ThreeArchive({
       antialias: true,
       powerPreference: 'high-performance',
     });
-    const minPixelRatio = 0.7;
-    const maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.35);
+    const minPixelRatio = 1.0;
+    const maxPixelRatio = Math.min(window.devicePixelRatio || 1.25, 1.5);
     let adaptivePixelRatio = maxPixelRatio;
     const setRenderPixelRatio = (value: number) => {
       const next = THREE.MathUtils.clamp(value, minPixelRatio, maxPixelRatio);
@@ -1893,11 +1902,10 @@ export function ThreeArchive({
       });
 
       const boxes = interactionObjectRefs.current.boxes as THREE.Group | undefined;
-      const boxLid = boxes?.userData.lid as THREE.Object3D | undefined;
-      if (boxLid) {
+      const boxLidPivot = boxes?.userData.lidPivot as THREE.Object3D | undefined;
+      if (boxLidPivot) {
         const open = activeTarget === 'boxesUnpack' || activeTarget === 'boxes';
-        boxLid.rotation.x = THREE.MathUtils.lerp(boxLid.rotation.x, open ? -1.05 - actionBeat * 0.18 : 0, 0.16);
-        boxLid.position.y = THREE.MathUtils.lerp(boxLid.position.y, open ? 0.68 : 0.552, 0.14);
+        boxLidPivot.rotation.x = THREE.MathUtils.lerp(boxLidPivot.rotation.x, open ? -1.25 - actionBeat * 0.12 : 0, 0.16);
       }
 
       const papers = interactionObjectRefs.current.deskPapers as THREE.Group | undefined;
