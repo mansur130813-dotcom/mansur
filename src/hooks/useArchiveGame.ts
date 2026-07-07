@@ -73,7 +73,6 @@ type ActionTarget =
   | 'redSeal'
   | 'case417Read'
   | 'flashlightBeam'
-  | 'incineratorBurn'
   | 'exitUnlock'
   | 'gateRun'
   | 'keyTake'
@@ -161,7 +160,6 @@ function actionLabel(id: HotspotId) {
     redFolder: 'Аккуратно берёшь красную папку и проверяешь печать',
     case417: 'Открываешь дело №417 и перелистываешь страницы',
     flashlight: 'Берёшь фонарик, проверяешь батарейку и луч света',
-    incinerator: 'Открываешь урну и готовишь папку к уничтожению',
     exit: 'Дёргаешь ручку двери и проверяешь замок',
     gate: 'Толкаешь белые ворота и выбегаешь наружу',
     ghostKey: 'Открываешь уличную полку и берёшь ключ',
@@ -230,7 +228,6 @@ function soundCueForTarget(target: HotspotId): SoundCue {
 }
 
 function finalAction(id: HotspotId): Pick<ActionState, 'target' | 'label'> {
-  if (id === 'incinerator') return { target: 'incineratorBurn', label: 'Открываешь урну, кладёшь дело №417 внутрь и ждёшь, пока красный свет погаснет.' };
   if (id === 'exit') return { target: 'exitUnlock', label: 'Сверяешь три скрытые записи, вставляешь пустую папку №418 в щель и отпираешь дверь.' };
   if (id === 'redFolder') return { target: 'redSeal', label: 'Ломаешь красную печать, хотя архив будто задерживает твою руку.' };
   if (id === 'gate') return { target: 'gateRun', label: 'Ты толкаешь белые ворота плечом и выбегаешь на дорогу, не оглядываясь назад.' };
@@ -300,6 +297,9 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
   const [jumpscare, setJumpscare] = useState(false);
   const playerRef = useRef(player);
   const shadowPointRef = useRef(shadowPoint);
+  const moveRef = useRef<(dx: number, dy: number) => void>(() => {});
+  const interactRef = useRef<() => void>(() => {});
+  const dropInventoryRef = useRef<() => void>(() => {});
 
   const objective = objectives[objectiveIndex] ?? objectives[objectives.length - 1];
   const finalMode = objectiveIndex === objectives.length;
@@ -354,7 +354,7 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
     actionIntervalRef.current = window.setInterval(() => {
       const progress = Math.min(100, ((Date.now() - startedAt) / duration) * 100);
       setAction({ target: poseTarget, label, progress });
-    }, 50);
+    }, 100);
 
     actionTimerRef.current = window.setTimeout(() => {
       clearActionTimers();
@@ -468,7 +468,6 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
       redFolder: 'Красная печать выглядит мягкой. Ее хочется вскрыть.',
       case417: 'Дело №417 ждет, пока ты дочитаешь остальные бумаги.',
       flashlight: 'Фонарик лежит рядом со стопкой документов. Батарейки внутри уже теплые.',
-      incinerator: 'Металлическая урна еще теплая.',
       exit: 'Дверь не открывается. Смена должна быть закрыта.',
       gate: 'Белые ворота ведут наружу. Если откроешь их, смена закончится.',
       ghostKey: itemIsInWorld('Ключ от стеклянной полки')
@@ -548,8 +547,6 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
       playSound('ending');
       recordEnding('good');
       setEnding('good');
-    } else if (id === 'incinerator' && inventory.includes('Личное дело №417')) {
-      setMessage('Урна больше не спасает. Хороший выход теперь снаружи, через белые ворота.');
     } else if (id === 'exit' && records >= 3) {
       setMessage('Выход больше не даёт другой концовки. Попробуй сделать выбор у красной папки или беги к белым воротам.');
     } else {
@@ -647,8 +644,8 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
       setMessage(lockedObjectiveMessage(objective.title));
       return;
     }
-    if (finalMode && !allowedSecretTarget && !['redFolder', 'exit', 'gate', 'incinerator'].includes(closest.id)) {
-      setMessage('Финальное время пришло только для выхода, красной папки, урны и секретных предметов.');
+    if (finalMode && !allowedSecretTarget && !['redFolder', 'exit', 'gate'].includes(closest.id)) {
+      setMessage('Финальное время пришло только для выхода, красной папки и секретных предметов.');
       return;
     }
 
@@ -919,6 +916,12 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
   }, [action?.target, active, ending, shadowAwake, shadowDefeated, settings.reducedScares]);
 
   useEffect(() => {
+    moveRef.current = move;
+    interactRef.current = interact;
+    dropInventoryRef.current = dropInventory;
+  });
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const keys: Record<string, [number, number]> = {
         ArrowUp: [0, -1],
@@ -934,14 +937,14 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
         d: [1, 0],
         в: [1, 0],
       };
-      if (event.key === 'e' || event.key === 'у' || event.key === 'Enter') interact();
-      else if (event.key === 'q' || event.key === 'й') dropInventory();
-      else if (keys[event.key]) move(...keys[event.key]);
+      if (event.key === 'e' || event.key === 'у' || event.key === 'Enter') interactRef.current();
+      else if (event.key === 'q' || event.key === 'й') dropInventoryRef.current();
+      else if (keys[event.key]) moveRef.current(...keys[event.key]);
     }
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  });
+  }, []);
 
   useEffect(
     () => () => {

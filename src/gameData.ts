@@ -18,7 +18,6 @@ export type HotspotId =
   | 'redFolder'
   | 'case417'
   | 'flashlight'
-  | 'incinerator'
   | 'exit'
   | 'gate'
   | 'ghostKey'
@@ -103,7 +102,6 @@ export const hotspots: Record<HotspotId, Point & { label: string }> = {
   redFolder: { x: 528, y: 82, label: 'Красная папка' },
   case417: { x: 770, y: 430, label: 'Дело №417' },
   flashlight: { x: 370, y: 190, label: 'Фонарик' },
-  incinerator: { x: 42, y: 42, label: 'Урна' },
   exit: { x: 450, y: 502, label: 'Выход' },
   gate: { x: 450, y: 1165, label: 'Белые ворота' },
   ghostKey: { x: 530, y: 790, label: 'Ключ от стеклянной полки' },

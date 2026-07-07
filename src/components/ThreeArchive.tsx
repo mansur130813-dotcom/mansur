@@ -14,7 +14,6 @@ type ActionTarget =
   | 'redSeal'
   | 'case417Read'
   | 'flashlightBeam'
-  | 'incineratorBurn'
   | 'exitUnlock'
   | 'gateRun'
   | 'keyTake'
@@ -306,32 +305,6 @@ function actionPose(target: ActionTarget | null, motion: number): Pose {
         rightUpperArm: -1.0 + motion * 0.18,
         leftLowerArm: -0.2,
         rightLowerArm: -0.3 + motion * 0.15,
-      };
-    case 'incineratorBurn':
-      return {
-        leftUpperArm: -1.7 + motion * 0.18,
-        rightUpperArm: -1.82 - motion * 0.18,
-        leftLowerArm: -1.45,
-        rightLowerArm: -1.5,
-        leftUpperLeg: 0.62,
-        rightUpperLeg: 0.36,
-        leftLowerLeg: -1.18,
-        rightLowerLeg: -0.92,
-        leftShoe: Math.PI / 2 + 0.42,
-        rightShoe: Math.PI / 2 + 0.28,
-        bodyLean: 0.86,
-        headPitch: 0.6,
-        lift: -0.22,
-        groupPitch: 0.3,
-      };
-    case 'incinerator':
-      return {
-        leftUpperArm: -1.22 + motion * 0.14,
-        rightUpperArm: -1.3 - motion * 0.14,
-        leftLowerArm: -0.96,
-        rightLowerArm: -1.05,
-        leftUpperLeg: 0.18,
-        rightUpperLeg: -0.08,
       };
     case 'exitUnlock':
       return {
@@ -1095,38 +1068,6 @@ function addOutside(scene: THREE.Scene) {
   return { key: addOutsideKeyShelf(scene), gate: addWhiteGate(scene) };
 }
 
-function addIncinerator(scene: THREE.Scene) {
-  const group = new THREE.Group();
-  group.position.set(-10.05, 0.24, -5.05);
-  scene.add(group);
-
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.32, 0.42, 0.62, 10),
-    new THREE.MeshStandardMaterial({ color: 0x4e4b45, roughness: 0.82, metalness: 0.18 }),
-  );
-  body.position.y = 0.31;
-  group.add(body);
-
-  const lid = new THREE.Mesh(
-    new THREE.BoxGeometry(0.78, 0.07, 0.62),
-    new THREE.MeshStandardMaterial({ color: 0x777069, roughness: 0.6, metalness: 0.22 }),
-  );
-  lid.position.set(0, 0.66, 0);
-  group.add(lid);
-
-  const glow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.24, 8),
-    new THREE.MeshBasicMaterial({ color: 0xb92b22, transparent: true, opacity: 0.0, depthWrite: false }),
-  );
-  glow.rotation.x = -Math.PI / 2;
-  glow.position.set(0, 0.68, 0);
-  group.add(glow);
-
-  group.userData.lid = lid;
-  group.userData.glow = glow;
-  return group;
-}
-
 function capsule(
   radius: number,
   length: number,
@@ -1424,15 +1365,6 @@ function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null,
       parts.leftHand.rotation.set(0.05, 0.1, -0.24);
       parts.rightHand.rotation.set(0.05, -0.1, 0.24);
       break;
-    case 'incineratorBurn':
-    case 'incinerator':
-      parts.leftHand.position.set(-0.2, -0.22 + beat * 0.08, -1.02);
-      parts.rightHand.position.set(0.2, -0.22 - beat * 0.05, -1.02);
-      parts.leftSleeve.rotation.set(1.78, 0.22, -0.18);
-      parts.rightSleeve.rotation.set(1.78, -0.22, 0.18);
-      parts.leftHand.rotation.set(0.35, 0.22, -0.2);
-      parts.rightHand.rotation.set(0.35, -0.22, 0.2);
-      break;
     case 'exitUnlock':
     case 'exit':
       parts.leftHand.position.set(-0.22, -0.48, -0.74);
@@ -1656,11 +1588,11 @@ export function ThreeArchive({
     firstPersonHandsRef.current = firstPersonHands;
 
     const renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: false,
       powerPreference: 'high-performance',
     });
     const minPixelRatio = 1.0;
-    const maxPixelRatio = Math.min(window.devicePixelRatio || 1.25, 1.5);
+    const maxPixelRatio = Math.min(window.devicePixelRatio || 1.2, 1.25);
     let adaptivePixelRatio = maxPixelRatio;
     const setRenderPixelRatio = (value: number) => {
       const next = THREE.MathUtils.clamp(value, minPixelRatio, maxPixelRatio);
@@ -1675,7 +1607,7 @@ export function ThreeArchive({
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.42;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     mount.appendChild(renderer.domElement);
 
     const outside = addOutside(scene);
@@ -1707,7 +1639,6 @@ export function ThreeArchive({
     box(scene, [0.22, 4.35, 5.75], [3.0, 2.17, -3.825], 0x1c1511);
     box(scene, [0.22, 4.35, 5.75], [3.0, 2.17, 3.825], 0x1c1511);
     box(scene, [0.22, 2.0, 2.35], [3.0, 3.35, 0], 0x1c1511);
-    interactionObjectRefs.current.incinerator = addIncinerator(scene);
     roomDoorsRef.current = [addRoomDoor(scene, -3.02, true), addRoomDoor(scene, 3.02, false)];
     addLabel(scene, 'ROOM 1', [-5.9, 2.35, -4.65]);
     addLabel(scene, 'ROOM 2', [5.9, 2.35, -4.65]);
@@ -1866,7 +1797,7 @@ export function ThreeArchive({
     let perfWindowStartedAt = 0;
     let perfFrameCount = 0;
     let perfElapsed = 0;
-    const frameInterval = 1000 / 40;
+    const frameInterval = 1000 / 36;
     const cameraGoal = new THREE.Vector3();
     const lookGoal = new THREE.Vector3();
     const animate = (timestamp = 0) => {
@@ -1987,18 +1918,6 @@ export function ThreeArchive({
         if (cameraScreen.material instanceof THREE.MeshStandardMaterial) {
           cameraScreen.material.emissive.setHex(tuning ? 0x1d6d55 : 0x000000);
           cameraScreen.material.emissiveIntensity = tuning ? 0.85 + actionBeat * 0.35 : 0;
-        }
-      }
-
-      const incinerator = interactionObjectRefs.current.incinerator as THREE.Group | undefined;
-      const incineratorLid = incinerator?.userData.lid as THREE.Object3D | undefined;
-      const incineratorGlow = incinerator?.userData.glow as THREE.Mesh | undefined;
-      if (incinerator && incineratorLid) {
-        const burning = activeTarget === 'incineratorBurn' || activeTarget === 'incinerator';
-        incineratorLid.rotation.x = THREE.MathUtils.lerp(incineratorLid.rotation.x, burning ? -1.15 : 0, 0.18);
-        incineratorLid.position.z = THREE.MathUtils.lerp(incineratorLid.position.z, burning ? -0.22 : 0, 0.18);
-        if (incineratorGlow?.material instanceof THREE.MeshBasicMaterial) {
-          incineratorGlow.material.opacity = THREE.MathUtils.lerp(incineratorGlow.material.opacity, burning ? 0.42 + actionBeat * 0.24 : 0, 0.16);
         }
       }
 

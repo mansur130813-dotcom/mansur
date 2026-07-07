@@ -13,7 +13,6 @@ type ActionTarget =
   | 'redSeal'
   | 'case417Read'
   | 'flashlightBeam'
-  | 'incineratorBurn'
   | 'exitUnlock'
   | 'gateRun'
   | 'keyTake'
