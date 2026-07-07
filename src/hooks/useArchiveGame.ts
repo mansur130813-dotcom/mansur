@@ -629,11 +629,6 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
       return;
     }
 
-    if (inventory.length > 0) {
-      setMessage(`Сначала выброси "${inventory[0]}" клавишей Q, потом делай задание.`);
-      return;
-    }
-
     const closest = interactionSpots().reduce(
       (best, { id, spot }) => {
         const gap = distance(player, spot);
@@ -654,6 +649,17 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
     }
     if (finalMode && !allowedSecretTarget && !['redFolder', 'exit', 'gate', 'incinerator'].includes(closest.id)) {
       setMessage('Финальное время пришло только для выхода, красной папки, урны и секретных предметов.');
+      return;
+    }
+
+    const canUseKeyOnGlassShelf =
+      closest.id === 'ghostVacuum' &&
+      !ghostCabinetUnlocked &&
+      inventory.includes('Ключ от стеклянной полки') &&
+      !itemIsInWorld('Пылесос для привидений');
+
+    if (inventory.length > 0 && !canUseKeyOnGlassShelf) {
+      setMessage(`Сначала выброси "${inventory[0]}" клавишей Q, потом делай задание.`);
       return;
     }
 
