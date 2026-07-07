@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { EndingScreen } from './components/EndingScreen';
 import { GameBoard } from './components/GameBoard';
@@ -7,6 +7,8 @@ import { MenuScreen } from './components/MenuScreen';
 import { useArchiveGame, type GameSave, type GameSettings } from './hooks/useArchiveGame';
 import { useGameSound } from './hooks/useGameSound';
 import { supabase } from './lib/supabase';
+
+const GOOGLE_LOGIN_PENDING_KEY = 'archive_google_login_pending';
 
 const finalObjective = {
   night: 'Финал',
@@ -29,6 +31,20 @@ function isGoogleUser(user: User | null) {
     user?.app_metadata?.provider === 'google' ||
       user?.identities?.some((identity) => identity.provider === 'google'),
   );
+}
+
+function shouldAutoStartFromGoogleReturn() {
+  if (sessionStorage.getItem(GOOGLE_LOGIN_PENDING_KEY) === '1') return true;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('start') === 'google' || params.get('archiveStart') === 'google';
+}
+
+function clearGoogleReturnMarker() {
+  sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
+  const url = new URL(window.location.href);
+  url.searchParams.delete('start');
+  url.searchParams.delete('archiveStart');
+  if (url.href !== window.location.href) window.history.replaceState({}, '', url.toString());
 }
 
 export default function App() {
@@ -62,7 +78,7 @@ export default function App() {
     };
   }, []);
 
-  async function loadGoogleSave(currentUser: User) {
+  const loadGoogleSave = useCallback(async (currentUser: User) => {
     const { data, error } = await supabase
       .from('game_saves')
       .select('save_data')
@@ -76,37 +92,50 @@ export default function App() {
 
     setSaveStatus(data?.save_data ? 'Google-сохранение загружено.' : 'Google-сохранение будет создано автоматически.');
     return (data?.save_data as GameSave | null) ?? null;
-  }
+  }, []);
 
-  async function startGame(nextUser: User | null = user, options: { startSound?: boolean } = {}) {
-    if (options.startSound !== false) sound.start();
+  const startGame = useCallback(
+    async (nextUser: User | null = user, options: { startSound?: boolean } = {}) => {
+      if (started) return;
+      if (options.startSound !== false) sound.start();
 
-    if (isGoogleUser(nextUser) && nextUser) {
-      const save = await loadGoogleSave(nextUser);
-      setInitialSave(save);
-    } else if (nextUser) {
-      setInitialSave(null);
-      setSaveStatus('Вход выполнен. Облачное сохранение включается только для Google-аккаунта.');
-    } else {
-      setInitialSave(null);
-      setSaveStatus('Гость: прогресс хранится только до перезапуска.');
-    }
+      if (isGoogleUser(nextUser) && nextUser) {
+        const save = await loadGoogleSave(nextUser);
+        setInitialSave(save);
+      } else if (nextUser) {
+        setInitialSave(null);
+        setSaveStatus('Вход выполнен. Облачное сохранение включается только для Google-аккаунта.');
+      } else {
+        setInitialSave(null);
+        setSaveStatus('Гость: прогресс хранится только до перезапуска.');
+      }
 
-    setStarted(true);
-  }
+      setStarted(true);
+    },
+    [loadGoogleSave, sound, started, user],
+  );
 
-  async function startAuthenticated(auto = false) {
-    const { data } = await supabase.auth.getSession();
-    const nextUser = data.session?.user ?? null;
-    setUser(nextUser);
+  const startAuthenticated = useCallback(
+    async (auto = false) => {
+      const { data } = await supabase.auth.getSession();
+      const nextUser = data.session?.user ?? null;
+      setUser(nextUser);
 
-    if (!nextUser) {
-      setSaveStatus('Сначала войди через email или Google.');
-      return;
-    }
+      if (!nextUser) {
+        setSaveStatus('Сначала войди через email или Google.');
+        return;
+      }
 
-    await startGame(nextUser, { startSound: !auto });
-  }
+      clearGoogleReturnMarker();
+      await startGame(nextUser, { startSound: !auto });
+    },
+    [startGame],
+  );
+
+  useEffect(() => {
+    if (started || !shouldAutoStartFromGoogleReturn()) return;
+    void startAuthenticated(true);
+  }, [startAuthenticated, started]);
 
   function toggleSound() {
     if (sound.enabled) sound.stop();

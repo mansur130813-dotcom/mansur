@@ -452,26 +452,93 @@ function itemMatches(item: string | undefined, patterns: string[]) {
 function createTargetGlow() {
   const group = new THREE.Group();
   const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(0.62, 0.018, 8, 48),
-    new THREE.MeshBasicMaterial({ color: 0xf1ddb0, transparent: true, opacity: 0.72, depthWrite: false }),
+    new THREE.TorusGeometry(0.82, 0.026, 4, 32),
+    new THREE.MeshBasicMaterial({ color: 0xf1ddb0, transparent: true, opacity: 0.84, depthWrite: false }),
   );
   ring.rotation.x = Math.PI / 2;
   group.add(ring);
 
   const inner = new THREE.Mesh(
-    new THREE.CircleGeometry(0.42, 32),
-    new THREE.MeshBasicMaterial({ color: 0xd8a14b, transparent: true, opacity: 0.12, depthWrite: false }),
+    new THREE.CircleGeometry(0.55, 8),
+    new THREE.MeshBasicMaterial({ color: 0xd8a14b, transparent: true, opacity: 0.18, depthWrite: false }),
   );
   inner.rotation.x = -Math.PI / 2;
   group.add(inner);
 
-  const light = new THREE.PointLight(0xf1ddb0, 1.1, 3.4);
-  light.position.set(0, 0.85, 0);
+  const pillarMaterial = new THREE.MeshBasicMaterial({ color: 0xf1ddb0, transparent: true, opacity: 0.72, depthWrite: false });
+  for (let index = 0; index < 5; index += 1) {
+    const pixel = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.13, 0.13), pillarMaterial);
+    pixel.position.set(0, 0.2 + index * 0.18, 0);
+    pixel.rotation.y = (index % 2) * 0.8;
+    group.add(pixel);
+  }
+
+  const light = new THREE.PointLight(0xf1ddb0, 1.45, 4.2);
+  light.position.set(0, 1.05, 0);
   group.add(light);
   group.userData.ring = ring;
   group.userData.inner = inner;
   group.userData.light = light;
   return group;
+}
+
+function createPixelItemMarker(color = 0xf1ddb0, accent = 0x65c7a2) {
+  const group = new THREE.Group();
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const context = canvas.getContext('2d');
+
+  if (context) {
+    context.imageSmoothingEnabled = false;
+    context.clearRect(0, 0, 64, 64);
+    context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+    context.fillRect(24, 4, 16, 8);
+    context.fillRect(16, 12, 32, 8);
+    context.fillRect(8, 20, 48, 24);
+    context.fillRect(16, 44, 32, 8);
+    context.fillRect(24, 52, 16, 8);
+    context.fillStyle = `#${accent.toString(16).padStart(6, '0')}`;
+    context.fillRect(24, 24, 16, 16);
+    context.fillStyle = 'rgba(24, 17, 13, 0.9)';
+    context.fillRect(28, 28, 8, 8);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.92, depthWrite: false }),
+  );
+  sprite.scale.set(0.48, 0.48, 1);
+  sprite.position.y = 0.22;
+  group.add(sprite);
+
+  const pixelMaterial = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.82, depthWrite: false });
+  for (let index = 0; index < 3; index += 1) {
+    const pixel = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.09), pixelMaterial);
+    pixel.position.set(index % 2 ? 0.08 : -0.08, -0.12 - index * 0.11, 0);
+    group.add(pixel);
+  }
+
+  return group;
+}
+
+function attachPixelMarker(object: THREE.Object3D | null | undefined, color = 0xf1ddb0, accent = 0x65c7a2) {
+  if (!object || object.userData.pixelMarker) return;
+  object.updateWorldMatrix(true, true);
+  const bounds = new THREE.Box3().setFromObject(object);
+  if (bounds.isEmpty()) return;
+
+  const center = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+  object.worldToLocal(center);
+
+  const marker = createPixelItemMarker(color, accent);
+  marker.position.set(center.x, center.y + size.y * 0.55 + 0.28, center.z);
+  marker.userData.baseY = marker.position.y;
+  object.add(marker);
+  object.userData.pixelMarker = marker;
 }
 
 function box(
@@ -606,9 +673,7 @@ function addBoxes(scene: THREE.Scene) {
   const group = new THREE.Group();
   scene.add(group);
   box(group as unknown as THREE.Scene, [1.0, 0.55, 0.72], [-5.2, 0.28, 4.35], 0xa36e35);
-  box(group as unknown as THREE.Scene, [0.86, 0.48, 0.62], [-5.75, 0.78, 4.07], 0x8b5a2b);
-  box(group as unknown as THREE.Scene, [0.82, 0.42, 0.58], [-4.8, 0.74, 3.85], 0xb57c3c);
-  const lid = box(group as unknown as THREE.Scene, [0.86, 0.04, 0.55], [-5.2, 0.58, 4.35], 0x2f2016);
+  const lid = box(group as unknown as THREE.Scene, [0.78, 0.035, 0.48], [-5.2, 0.552, 4.35], 0xa36e35);
   lid.userData.closedX = lid.rotation.x;
   group.userData.lid = lid;
   addLabel(scene, 'КОРОБКИ', [-5.25, 1.45, 4.15]);
@@ -1030,6 +1095,7 @@ function createDroppedItemModel(item: string) {
     box(group as unknown as THREE.Scene, [0.42, 0.06, 0.3], [0, 0, 0], 0xd8c9a8);
   }
 
+  attachPixelMarker(group, 0xf1ddb0, 0xd8a14b);
   return group;
 }
 
@@ -1282,6 +1348,10 @@ function disposeObject(object: THREE.Object3D) {
       child.geometry.dispose();
       if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose());
       else child.material.dispose();
+    } else if (child instanceof THREE.Sprite) {
+      const material = child.material;
+      material.map?.dispose();
+      material.dispose();
     }
   });
 }
@@ -1655,6 +1725,8 @@ export function ThreeArchive({
     const outside = addOutside(scene);
     sourceItemRefs.current['Ключ от стеклянной полки'] = outside.key;
     interactionObjectRefs.current.gate = outside.gate;
+    attachPixelMarker(outside.key, 0xf1ddb0, 0xd8a14b);
+    attachPixelMarker(outside.gate, 0xf1ddb0, 0x65c7a2);
 
     const droppedLayer = new THREE.Group();
     scene.add(droppedLayer);
@@ -1682,6 +1754,7 @@ export function ThreeArchive({
     box(scene, [0.22, 4.35, 5.75], [3.0, 2.17, 3.825], 0x1c1511);
     box(scene, [0.22, 2.0, 2.35], [3.0, 3.35, 0], 0x1c1511);
     interactionObjectRefs.current.incinerator = addIncinerator(scene);
+    attachPixelMarker(interactionObjectRefs.current.incinerator, 0xd8a14b, 0xb92b22);
     roomDoorsRef.current = [addRoomDoor(scene, -3.02, true), addRoomDoor(scene, 3.02, false)];
     addLabel(scene, 'ROOM 1', [-5.9, 2.35, -4.65]);
     addLabel(scene, 'ROOM 2', [5.9, 2.35, -4.65]);
@@ -1689,6 +1762,8 @@ export function ThreeArchive({
     const ghostCabinet = addGhostVacuumCabinet(scene);
     ghostCabinetDoorRef.current = ghostCabinet.door;
     ghostVacuumRef.current = ghostCabinet.vacuum;
+    attachPixelMarker(ghostCabinet.door, 0xf1ddb0, 0x65c7a2);
+    attachPixelMarker(ghostCabinet.vacuum, 0x65c7a2, 0xf1ddb0);
 
     for (let row = 0; row < 4; row += 1) {
       box(scene, [0.38, 1.8, 2.8], [-7.9 + row * 0.74, 0.9, -4.4], 0x2f231b);
@@ -1704,6 +1779,7 @@ export function ThreeArchive({
 
     const tableParts = addTable(scene);
     interactionObjectRefs.current.deskPapers = tableParts.papers;
+    attachPixelMarker(tableParts.papers, 0xf1ddb0, 0xd8a14b);
     const personalFolder = new THREE.Group();
     personalFolder.position.set(-1.25, 0.96, -1.98);
     scene.add(personalFolder);
@@ -1711,13 +1787,18 @@ export function ThreeArchive({
     personalFolder.userData.cover = personalFolderCover;
     sourceItemRefs.current['Папка без номера'] = personalFolder;
     interactionObjectRefs.current.personalFolder = personalFolder;
+    attachPixelMarker(personalFolder, 0xf1ddb0, 0xd8a14b);
     sourceItemRefs.current['Фонарик'] = addFlashlightModel(scene);
     interactionObjectRefs.current.flashlight = sourceItemRefs.current['Фонарик'];
+    attachPixelMarker(sourceItemRefs.current['Фонарик'], 0xf1ddb0, 0x65c7a2);
     const coffee = addCoffee(scene);
     coffeeLiquidRef.current = coffee.liquid;
     interactionObjectRefs.current.coffee = coffee.group;
+    attachPixelMarker(coffee.group, 0xf1ddb0, 0xd8a14b);
     interactionObjectRefs.current.redFolder = addRedFolder(scene);
     interactionObjectRefs.current.cameraStation = addCameraStation(scene);
+    attachPixelMarker(interactionObjectRefs.current.redFolder, 0xd8a14b, 0xa51f24);
+    attachPixelMarker(interactionObjectRefs.current.cameraStation, 0x65c7a2, 0xf1ddb0);
     addSecurityCamera(scene, [-7.8, 2.65, -6.54], 0);
     addSecurityCamera(scene, [7.8, 2.65, -6.54], 0);
     addSecurityCamera(scene, [-10.94, 2.65, 4.9], Math.PI / 2);
@@ -1729,13 +1810,18 @@ export function ThreeArchive({
     box(emptyCase418 as unknown as THREE.Scene, [0.04, 0.5, 0.64], [-0.08, 0, 0], 0xa51f24);
     sourceItemRefs.current['Пустое дело №418'] = emptyCase418;
     interactionObjectRefs.current.shelfCase = emptyCase418;
+    attachPixelMarker(emptyCase418, 0xf1ddb0, 0xd8a14b);
 
     sourceItemRefs.current['Личное дело №417'] = addCase417(scene);
     interactionObjectRefs.current.case417 = sourceItemRefs.current['Личное дело №417'];
+    attachPixelMarker(sourceItemRefs.current['Личное дело №417'], 0xf1ddb0, 0xd8a14b);
     interactionObjectRefs.current.boxes = addBoxes(scene);
+    attachPixelMarker(interactionObjectRefs.current.boxes, 0xf1ddb0, 0xd8a14b);
     exitDoorRef.current = addSwitchAndExit(scene);
     interactionObjectRefs.current.switchLever = exitDoorRef.current.userData.switchLever as THREE.Object3D;
     interactionObjectRefs.current.exitDoor = exitDoorRef.current;
+    attachPixelMarker(interactionObjectRefs.current.switchLever, 0xf1ddb0, 0xd8a14b);
+    attachPixelMarker(exitDoorRef.current, 0xf1ddb0, 0x65c7a2);
 
     const playerGroup = createPerson();
     const initialPlayerPosition = toWorld(player);
@@ -1861,8 +1947,22 @@ export function ThreeArchive({
         if (!object.userData.basePosition) object.userData.basePosition = object.position.clone();
         if (!object.userData.baseRotation) object.userData.baseRotation = object.rotation.clone();
       };
-      Object.values(interactionObjectRefs.current).forEach((object) => {
+      const markedObjects = new Set([...Object.values(interactionObjectRefs.current), ...Object.values(sourceItemRefs.current)]);
+      markedObjects.forEach((object) => {
         if (object) rememberBase(object);
+        const marker = object?.userData.pixelMarker as THREE.Group | undefined;
+        if (marker) {
+          const baseY = (marker.userData.baseY as number | undefined) ?? marker.position.y;
+          const pulse = 1 + Math.sin(frame * 5.4 + marker.id) * 0.14;
+          marker.position.y = baseY + Math.sin(frame * 4.6 + marker.id) * 0.045;
+          marker.scale.setScalar(pulse);
+          marker.traverse((child) => {
+            if (child instanceof THREE.Sprite) child.material.opacity = 0.82 + Math.sin(frame * 5.4 + marker.id) * 0.12;
+            if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial) {
+              child.material.opacity = 0.66 + Math.sin(frame * 5.4 + marker.id) * 0.16;
+            }
+          });
+        }
       });
 
       const boxes = interactionObjectRefs.current.boxes as THREE.Group | undefined;
@@ -1870,7 +1970,7 @@ export function ThreeArchive({
       if (boxLid) {
         const open = activeTarget === 'boxesUnpack' || activeTarget === 'boxes';
         boxLid.rotation.x = THREE.MathUtils.lerp(boxLid.rotation.x, open ? -1.05 - actionBeat * 0.18 : 0, 0.16);
-        boxLid.position.y = THREE.MathUtils.lerp(boxLid.position.y, open ? 0.72 : 0.58, 0.14);
+        boxLid.position.y = THREE.MathUtils.lerp(boxLid.position.y, open ? 0.68 : 0.552, 0.14);
       }
 
       const papers = interactionObjectRefs.current.deskPapers as THREE.Group | undefined;

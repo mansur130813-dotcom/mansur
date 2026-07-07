@@ -1,9 +1,17 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+
+const GOOGLE_LOGIN_PENDING_KEY = 'archive_google_login_pending';
 
 type Props = {
   onAuthenticated: (auto?: boolean) => void;
 };
+
+function getAuthRedirectUrl(start?: 'google') {
+  const url = new URL(window.location.href);
+  if (start) url.searchParams.set('start', start);
+  return url.toString();
+}
 
 export function Auth({ onAuthenticated }: Props) {
   const [email, setEmail] = useState('');
@@ -41,7 +49,7 @@ export function Auth({ onAuthenticated }: Props) {
               email,
               password,
               options: {
-                emailRedirectTo: `${window.location.origin}${window.location.pathname}`,
+                emailRedirectTo: getAuthRedirectUrl(),
               },
             })
           : await supabase.auth.signInWithPassword({ email, password });
@@ -80,14 +88,16 @@ export function Auth({ onAuthenticated }: Props) {
       return;
     }
 
+    sessionStorage.setItem(GOOGLE_LOGIN_PENDING_KEY, '1');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}${window.location.pathname}`,
+        redirectTo: getAuthRedirectUrl('google'),
       },
     });
 
     if (error) {
+      sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
       setMessage(error.message);
       setBusy(false);
     }
