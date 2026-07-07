@@ -8,7 +8,7 @@ type Props = {
   achievements: Achievement[];
   allAchievements: Achievement[];
   onGuestStart: () => void;
-  onAuthenticated: () => void;
+  onAuthenticated: (auto?: boolean) => void;
   onToggleSound: () => void;
 };
 
@@ -41,7 +41,9 @@ export function MenuScreen({
             <p>Можно играть без аккаунта. Прогресс гостя не привязан к email.</p>
             <p className="save-note">{saveStatus}</p>
             <div className="menu-actions">
-              <button type="button" onClick={onGuestStart}>Играть как гость</button>
+              <button type="button" onClick={onGuestStart}>
+                Играть как гость
+              </button>
               <button type="button" className="quiet-button" onClick={onToggleSound}>
                 Звук: {soundEnabled ? 'вкл' : 'выкл'}
               </button>
@@ -55,7 +57,9 @@ export function MenuScreen({
         <section className="menu-achievements">
           <div className="menu-achievements-head">
             <h2>Достижения</h2>
-            <p>{achievements.length}/{allAchievements.length}</p>
+            <p>
+              {achievements.length}/{allAchievements.length}
+            </p>
           </div>
           <div className="badge-grid">
             {allAchievements.map((achievement) => {
@@ -76,13 +80,10 @@ export function MenuScreen({
               Управление: WASD или стрелки для движения, мышь для поворота камеры, E для действия.
               Подходи к предметам, выполняй задания, смотри мониторы камер и следи за страхом.
             </p>
+            <p>Концовки: плохая концовка связана с красной папкой. Хорошая концовка - побег через белые ворота.</p>
             <p>
-              Концовки: плохая концовка связана с красной папкой. Хорошая концовка - побег
-              через белые ворота.
-            </p>
-            <p>
-              Правило инвентаря: в руках можно держать только один предмет. Нажми Q, чтобы выбросить
-              предмет, потом подойди к нему и нажми E, чтобы снова взять.
+              Правило инвентаря: в руках можно держать только один предмет. Нажми Q, чтобы выбросить предмет,
+              потом подойди к нему и нажми E, чтобы снова взять.
             </p>
           </section>
         )}

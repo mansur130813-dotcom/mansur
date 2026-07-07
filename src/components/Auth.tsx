@@ -2,7 +2,7 @@
 import { supabase } from '../lib/supabase';
 
 type Props = {
-  onAuthenticated: () => void;
+  onAuthenticated: (auto?: boolean) => void;
 };
 
 export function Auth({ onAuthenticated }: Props) {
@@ -16,11 +16,11 @@ export function Auth({ onAuthenticated }: Props) {
     let mounted = true;
 
     supabase.auth.getSession().then(({ data }) => {
-      if (mounted && data.session) onAuthenticated();
+      if (mounted && data.session) onAuthenticated(true);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) onAuthenticated();
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) onAuthenticated(true);
     });
 
     return () => {
@@ -37,7 +37,13 @@ export function Auth({ onAuthenticated }: Props) {
     try {
       const { data, error } =
         mode === 'signup'
-          ? await supabase.auth.signUp({ email, password })
+          ? await supabase.auth.signUp({
+              email,
+              password,
+              options: {
+                emailRedirectTo: `${window.location.origin}${window.location.pathname}`,
+              },
+            })
           : await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
@@ -45,8 +51,13 @@ export function Auth({ onAuthenticated }: Props) {
         return;
       }
 
-      if (data.session || mode === 'signin') {
-        onAuthenticated();
+      if (data.session) {
+        onAuthenticated(false);
+        return;
+      }
+
+      if (mode === 'signin') {
+        setMessage('Вход не завершился. Проверь email/пароль или подтверди почту.');
         return;
       }
 
@@ -62,10 +73,17 @@ export function Auth({ onAuthenticated }: Props) {
     setBusy(true);
     setMessage('');
 
+    const { data: current } = await supabase.auth.getSession();
+    if (current.session) {
+      onAuthenticated(false);
+      setBusy(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}${window.location.pathname}`,
       },
     });
 

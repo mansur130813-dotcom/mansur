@@ -81,8 +81,8 @@ type AnimatedPersonParts = {
 type FirstPersonHandsParts = {
   leftSleeve: THREE.Mesh;
   rightSleeve: THREE.Mesh;
-  leftHand: THREE.Mesh;
-  rightHand: THREE.Mesh;
+  leftHand: THREE.Group;
+  rightHand: THREE.Group;
   heldItemSlot: THREE.Group;
 };
 
@@ -398,6 +398,19 @@ function actionPose(target: ActionTarget | null, motion: number): Pose {
         headYaw: -0.45,
         lift: Math.abs(motion) * 0.03,
       };
+    case 'ghostVacuum':
+      return {
+        leftUpperArm: -1.36 + Math.abs(motion) * 0.18,
+        rightUpperArm: -1.36 - Math.abs(motion) * 0.18,
+        leftLowerArm: -1.18 + motion * 0.16,
+        rightLowerArm: -1.18 - motion * 0.16,
+        leftUpperLeg: 0.2,
+        rightUpperLeg: -0.18,
+        bodyLean: 0.44,
+        headPitch: 0.38,
+        lift: -0.04 + Math.abs(motion) * 0.04,
+        groupPitch: 0.08,
+      };
     case 'vacuumSuck':
       return {
         leftUpperArm: -1.28 + motion * 0.18,
@@ -539,55 +552,82 @@ function addTable(scene: THREE.Scene) {
   box(scene, [0.18, 0.85, 0.18], [-0.16, 0.3, -2.38], 0x3a2418);
   box(scene, [0.18, 0.85, 0.18], [-2.28, 0.3, -1.52], 0x3a2418);
   box(scene, [0.18, 0.85, 0.18], [-0.16, 0.3, -1.52], 0x3a2418);
+  const papers = new THREE.Group();
+  papers.position.set(-1.2, 0.9, -1.96);
+  scene.add(papers);
+  for (let index = 0; index < 4; index += 1) {
+    const sheet = new THREE.Mesh(
+      new THREE.BoxGeometry(0.42, 0.012, 0.28),
+      new THREE.MeshStandardMaterial({ color: index % 2 ? 0xd8c9a8 : 0xf1ddb0, roughness: 0.78 }),
+    );
+    sheet.position.set(-0.36 + index * 0.24, index * 0.015, Math.sin(index) * 0.04);
+    sheet.rotation.y = -0.18 + index * 0.12;
+    papers.add(sheet);
+  }
+  papers.userData.baseY = papers.position.y;
   addLabel(scene, 'СТОЛ', [0.0, 1.42, 1.25]);
+  return { papers };
 }
 
 function addCoffee(scene: THREE.Scene) {
+  const group = new THREE.Group();
+  group.position.set(-0.62, 0.98, -1.9);
+  scene.add(group);
   const cup = new THREE.Mesh(
     new THREE.CylinderGeometry(0.18, 0.15, 0.24, 24),
     new THREE.MeshStandardMaterial({ color: 0xe1d2ae, roughness: 0.55 }),
   );
-  cup.position.set(-0.62, 0.98, -1.9);
-  scene.add(cup);
+  group.add(cup);
   const coffee = new THREE.Mesh(
     new THREE.CylinderGeometry(0.14, 0.14, 0.02, 24),
     new THREE.MeshStandardMaterial({ color: 0x2a1510, roughness: 0.4 }),
   );
-  coffee.position.set(-0.62, 1.11, -1.9);
-  scene.add(coffee);
+  coffee.position.set(0, 0.13, 0);
+  group.add(coffee);
   const cupMaterial = new THREE.MeshStandardMaterial({ color: 0xe1d2ae, roughness: 0.55 });
   const handle = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.022, 10, 22), cupMaterial);
-  handle.position.set(-0.41, 1.0, -1.9);
+  handle.position.set(0.21, 0.02, 0);
   handle.scale.set(0.72, 1.22, 1);
-  scene.add(handle);
+  group.add(handle);
 
   const upperHandleJoint = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 0.05), cupMaterial);
-  upperHandleJoint.position.set(-0.48, 1.06, -1.9);
-  scene.add(upperHandleJoint);
+  upperHandleJoint.position.set(0.14, 0.08, 0);
+  group.add(upperHandleJoint);
 
   const lowerHandleJoint = upperHandleJoint.clone();
-  lowerHandleJoint.position.set(-0.48, 0.94, -1.9);
-  scene.add(lowerHandleJoint);
+  lowerHandleJoint.position.set(0.14, -0.04, 0);
+  group.add(lowerHandleJoint);
+  group.userData.baseY = group.position.y;
   addLabel(scene, 'КОФЕ', [0.82, 1.48, 1.38]);
-  return coffee;
+  return { group, liquid: coffee };
 }
 
 function addBoxes(scene: THREE.Scene) {
-  box(scene, [1.0, 0.55, 0.72], [-5.2, 0.28, 4.35], 0xa36e35);
-  box(scene, [0.86, 0.48, 0.62], [-5.75, 0.78, 4.07], 0x8b5a2b);
-  box(scene, [0.82, 0.42, 0.58], [-4.8, 0.74, 3.85], 0xb57c3c);
-  box(scene, [0.86, 0.04, 0.04], [-5.2, 0.58, 4.35], 0x2f2016);
+  const group = new THREE.Group();
+  scene.add(group);
+  box(group as unknown as THREE.Scene, [1.0, 0.55, 0.72], [-5.2, 0.28, 4.35], 0xa36e35);
+  box(group as unknown as THREE.Scene, [0.86, 0.48, 0.62], [-5.75, 0.78, 4.07], 0x8b5a2b);
+  box(group as unknown as THREE.Scene, [0.82, 0.42, 0.58], [-4.8, 0.74, 3.85], 0xb57c3c);
+  const lid = box(group as unknown as THREE.Scene, [0.86, 0.04, 0.55], [-5.2, 0.58, 4.35], 0x2f2016);
+  lid.userData.closedX = lid.rotation.x;
+  group.userData.lid = lid;
   addLabel(scene, 'КОРОБКИ', [-5.25, 1.45, 4.15]);
+  return group;
 }
 
 function addCameraStation(scene: THREE.Scene) {
-  box(scene, [1.25, 0.78, 0.12], [5.15, 0.95, 4.25], 0x183831);
-  box(scene, [1.05, 0.55, 0.04], [5.15, 0.95, 4.17], 0x5bb494);
-  box(scene, [0.45, 0.18, 0.4], [5.15, 0.32, 4.53], 0x181615);
-  box(scene, [0.12, 0.5, 0.12], [5.15, 0.62, 4.47], 0x181615);
+  const group = new THREE.Group();
+  scene.add(group);
+  box(group as unknown as THREE.Scene, [1.25, 0.78, 0.12], [5.15, 0.95, 4.25], 0x183831);
+  const screen = box(group as unknown as THREE.Scene, [1.05, 0.55, 0.04], [5.15, 0.95, 4.17], 0x5bb494);
+  box(group as unknown as THREE.Scene, [0.45, 0.18, 0.4], [5.15, 0.32, 4.53], 0x181615);
+  const knob = box(group as unknown as THREE.Scene, [0.12, 0.5, 0.12], [5.15, 0.62, 4.47], 0x181615);
   box(scene, [0.5, 0.22, 0.32], [6.2, 1.78, -4.88], 0x111111);
   box(scene, [0.14, 0.14, 0.3], [6.2, 1.78, -4.62], 0x333333);
+  group.userData.screen = screen;
+  group.userData.knob = knob;
   addLabel(scene, 'КАМЕРЫ', [5.15, 1.72, 4.2]);
+  return group;
 }
 
 function addSecurityCamera(scene: THREE.Scene, position: [number, number, number], rotationY: number) {
@@ -617,20 +657,25 @@ function addSecurityCamera(scene: THREE.Scene, position: [number, number, number
 }
 
 function addRedFolder(scene: THREE.Scene) {
+  const group = new THREE.Group();
   const folderX = 1.9;
+  scene.add(group);
 
-  box(scene, [1.25, 0.12, 0.6], [folderX, 1.16, -4.8], 0x5a3c29);
-  box(scene, [0.08, 0.78, 0.52], [folderX - 0.58, 0.78, -4.8], 0x2f2018);
-  box(scene, [0.08, 0.78, 0.52], [folderX + 0.58, 0.78, -4.8], 0x2f2018);
-  box(scene, [0.95, 0.08, 0.55], [folderX, 1.27, -4.78], 0xa51f24);
+  box(group as unknown as THREE.Scene, [1.25, 0.12, 0.6], [folderX, 1.16, -4.8], 0x5a3c29);
+  box(group as unknown as THREE.Scene, [0.08, 0.78, 0.52], [folderX - 0.58, 0.78, -4.8], 0x2f2018);
+  box(group as unknown as THREE.Scene, [0.08, 0.78, 0.52], [folderX + 0.58, 0.78, -4.8], 0x2f2018);
+  const cover = box(group as unknown as THREE.Scene, [0.95, 0.08, 0.55], [folderX, 1.27, -4.78], 0xa51f24);
   const seal = new THREE.Mesh(
     new THREE.CylinderGeometry(0.11, 0.11, 0.035, 24),
     new THREE.MeshStandardMaterial({ color: 0xd8a14b, roughness: 0.4 }),
   );
   seal.position.set(folderX + 0.06, 1.33, -5.04);
   seal.rotation.x = Math.PI / 2;
-  scene.add(seal);
+  group.add(seal);
+  group.userData.cover = cover;
+  group.userData.seal = seal;
   addLabel(scene, 'КРАСНАЯ ПАПКА', [folderX, 1.95, -4.77]);
+  return group;
 }
 
 function addFlashlightModel(scene: THREE.Scene) {
@@ -677,12 +722,13 @@ function addCase417(scene: THREE.Scene) {
   label.rotation.x = -Math.PI / 2;
   label.rotation.z = Math.PI;
   group.add(label);
+  group.userData.lid = group.children.find((child) => child instanceof THREE.Mesh && child.position.y > 0.3);
   return group;
 }
 
 function addSwitchAndExit(scene: THREE.Scene) {
   box(scene, [0.08, 0.5, 0.42], [10.86, 1.55, 3.25], 0xe1d2ae);
-  box(scene, [0.1, 0.18, 0.12], [10.78, 1.57, 3.25], 0xd8a14b);
+  const switchLever = box(scene, [0.1, 0.18, 0.12], [10.78, 1.57, 3.25], 0xd8a14b);
   addLabel(scene, 'СВЕТ', [10.35, 2.25, 3.25]);
   box(scene, [0.18, 2.2, 0.24], [-0.9, 1.1, 6.56], 0x3c291d);
   box(scene, [0.18, 2.2, 0.24], [0.9, 1.1, 6.56], 0x3c291d);
@@ -716,6 +762,7 @@ function addSwitchAndExit(scene: THREE.Scene) {
   doorPivot.add(handle);
 
   scene.add(doorPivot);
+  doorPivot.userData.switchLever = switchLever;
   addLabel(scene, 'ВЫХОД', [0, 2.55, 6.25]);
   return doorPivot;
 }
@@ -775,6 +822,8 @@ function addTree(scene: THREE.Scene, x: number, z: number, scale = 1) {
 function addWhiteGate(scene: THREE.Scene) {
   const white = new THREE.MeshStandardMaterial({ color: 0xf2f0e6, roughness: 0.42, metalness: 0.05 });
   const shadow = new THREE.MeshStandardMaterial({ color: 0xb8b4a8, roughness: 0.6 });
+  const gateGroup = new THREE.Group();
+  scene.add(gateGroup);
 
   [-5.15, 5.15].forEach((centerX) => {
     const topFence = new THREE.Mesh(new THREE.BoxGeometry(6.95, 0.14, 0.14), white);
@@ -817,14 +866,17 @@ function addWhiteGate(scene: THREE.Scene) {
   const openLeft = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.55, 0.08), white);
   openLeft.position.set(-1.05, 1.18, 21.15);
   openLeft.rotation.y = -0.72;
-  scene.add(openLeft);
+  gateGroup.add(openLeft);
 
   const openRight = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.55, 0.08), white);
   openRight.position.set(1.05, 1.18, 21.15);
   openRight.rotation.y = 0.72;
-  scene.add(openRight);
+  gateGroup.add(openRight);
+  gateGroup.userData.left = openLeft;
+  gateGroup.userData.right = openRight;
 
   addLabel(scene, 'WHITE GATE', [0, 2.65, 21.25]);
+  return gateGroup;
 }
 
 function addOutsideKeyShelf(scene: THREE.Scene) {
@@ -1031,8 +1083,39 @@ function addOutside(scene: THREE.Scene) {
   );
   backTreeLine.position.set(0, 1.2, 28.4);
   scene.add(backTreeLine);
-  addWhiteGate(scene);
-  return { key: addOutsideKeyShelf(scene) };
+  return { key: addOutsideKeyShelf(scene), gate: addWhiteGate(scene) };
+}
+
+function addIncinerator(scene: THREE.Scene) {
+  const group = new THREE.Group();
+  group.position.set(-10.05, 0.24, -5.05);
+  scene.add(group);
+
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.32, 0.42, 0.62, 10),
+    new THREE.MeshStandardMaterial({ color: 0x4e4b45, roughness: 0.82, metalness: 0.18 }),
+  );
+  body.position.y = 0.31;
+  group.add(body);
+
+  const lid = new THREE.Mesh(
+    new THREE.BoxGeometry(0.78, 0.07, 0.62),
+    new THREE.MeshStandardMaterial({ color: 0x777069, roughness: 0.6, metalness: 0.22 }),
+  );
+  lid.position.set(0, 0.66, 0);
+  group.add(lid);
+
+  const glow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.24, 8),
+    new THREE.MeshBasicMaterial({ color: 0xb92b22, transparent: true, opacity: 0.0, depthWrite: false }),
+  );
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.set(0, 0.68, 0);
+  group.add(glow);
+
+  group.userData.lid = lid;
+  group.userData.glow = glow;
+  return group;
 }
 
 function capsule(
@@ -1050,6 +1133,31 @@ function capsule(
   mesh.rotation.set(...rotation);
   mesh.castShadow = true;
   return mesh;
+}
+
+function createPalm(material: THREE.Material, side: -1 | 1, scale = 1) {
+  const group = new THREE.Group();
+
+  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.13 * scale, 0.055 * scale, 0.17 * scale), material);
+  palm.position.set(0, 0, -0.02 * scale);
+  palm.castShadow = true;
+  group.add(palm);
+
+  for (let index = 0; index < 4; index += 1) {
+    const finger = new THREE.Mesh(new THREE.CapsuleGeometry(0.014 * scale, 0.095 * scale, 5, 8), material);
+    finger.position.set((-0.047 + index * 0.031) * scale, -0.006 * scale, -0.13 * scale);
+    finger.rotation.x = Math.PI / 2 + 0.08;
+    finger.castShadow = true;
+    group.add(finger);
+  }
+
+  const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.017 * scale, 0.085 * scale, 5, 8), material);
+  thumb.position.set(side * 0.082 * scale, -0.006 * scale, -0.04 * scale);
+  thumb.rotation.set(Math.PI / 2, 0, side * 0.75);
+  thumb.castShadow = true;
+  group.add(thumb);
+
+  return group;
 }
 
 function createPerson(dark = false) {
@@ -1098,6 +1206,14 @@ function createPerson(dark = false) {
   const rightUpperArm = capsule(0.065, 0.48, coat, [0.32, 0.8, 0], [0, 0, 0.2]);
   const leftLowerArm = capsule(0.055, 0.44, skin, [-0.37, 0.45, 0], [0, 0, -0.08]);
   const rightLowerArm = capsule(0.055, 0.44, skin, [0.37, 0.45, 0], [0, 0, 0.08]);
+  const leftPalm = createPalm(makePersonMaterial(skin, 0.7), -1, 0.78);
+  const rightPalm = createPalm(makePersonMaterial(skin, 0.7), 1, 0.78);
+  leftPalm.position.set(0, -0.29, 0.01);
+  rightPalm.position.set(0, -0.29, 0.01);
+  leftPalm.rotation.set(0.08, 0, 0.12);
+  rightPalm.rotation.set(0.08, 0, -0.12);
+  leftLowerArm.add(leftPalm);
+  rightLowerArm.add(rightPalm);
   const leftUpperLeg = capsule(0.075, 0.28, pants, [-0.13, 0.32, 0], [0.04, 0, 0.02]);
   const rightUpperLeg = capsule(0.075, 0.28, pants, [0.13, 0.32, 0], [-0.04, 0, -0.02]);
   const leftLowerLeg = capsule(0.07, 0.32, pants, [-0.13, -0.02, 0], [0.03, 0, 0.02]);
@@ -1179,8 +1295,8 @@ function createFirstPersonHands() {
 
   const leftSleeve = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.46, 8, 12), sleeveMaterial);
   const rightSleeve = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.46, 8, 12), sleeveMaterial);
-  const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.075, 14, 10), skinMaterial);
-  const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.075, 14, 10), skinMaterial);
+  const leftHand = createPalm(skinMaterial, -1, 1.05);
+  const rightHand = createPalm(skinMaterial, 1, 1.05);
   const heldItemSlot = new THREE.Group();
 
   leftSleeve.position.set(-0.22, -0.28, -0.54);
@@ -1189,6 +1305,8 @@ function createFirstPersonHands() {
   rightHand.position.set(0.25, -0.44, -0.82);
   leftSleeve.rotation.set(1.05, 0.18, -0.25);
   rightSleeve.rotation.set(1.05, -0.18, 0.25);
+  leftHand.rotation.set(-0.32, -0.22, 0.18);
+  rightHand.rotation.set(-0.32, 0.22, -0.18);
 
   group.add(leftSleeve, rightSleeve, leftHand, rightHand, heldItemSlot);
   group.userData.parts = { leftSleeve, rightSleeve, leftHand, rightHand, heldItemSlot } satisfies FirstPersonHandsParts;
@@ -1210,6 +1328,10 @@ function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null,
   parts.rightHand.position.set(0.25, -0.45, -0.82);
   parts.leftSleeve.rotation.set(1.05, 0.18, -0.25);
   parts.rightSleeve.rotation.set(1.05, -0.18, 0.25);
+  parts.leftHand.rotation.set(-0.32, -0.22, 0.18);
+  parts.rightHand.rotation.set(-0.32, 0.22, -0.18);
+  parts.leftHand.scale.setScalar(1);
+  parts.rightHand.scale.setScalar(1);
   parts.leftSleeve.visible = true;
   parts.rightSleeve.visible = true;
   parts.leftHand.visible = true;
@@ -1228,6 +1350,7 @@ function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null,
       parts.leftHand.position.set(-0.28, -0.5, -0.72);
       parts.rightHand.position.set(0.36, -0.05 + motion * 0.04, -0.92);
       parts.rightSleeve.rotation.set(1.95, -0.45, 0.18 + beat * 0.18);
+      parts.rightHand.rotation.set(0.45, -0.5, 0.25 + beat * 0.22);
       break;
     case 'deskSort':
       parts.leftHand.position.set(-0.28, -0.34 + beat * 0.28, -0.92);
@@ -1259,6 +1382,8 @@ function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null,
       parts.rightHand.position.set(0.32 - motion * 0.05, -0.28, -0.92);
       parts.leftSleeve.rotation.set(1.42, 0.38, -0.28 + motion * 0.16);
       parts.rightSleeve.rotation.set(1.42, -0.38, 0.28 - motion * 0.16);
+      parts.leftHand.rotation.set(0.18, 0.38, -0.35 + motion * 0.35);
+      parts.rightHand.rotation.set(0.18, -0.38, 0.35 - motion * 0.35);
       break;
     case 'redSeal':
     case 'redFolder':
@@ -1273,16 +1398,53 @@ function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null,
       parts.rightHand.position.set(0.14, -0.31, -0.84);
       parts.leftSleeve.rotation.set(1.28, 0.05, -0.08);
       parts.rightSleeve.rotation.set(1.28, -0.05, 0.08);
+      parts.leftHand.rotation.set(0.05, 0.1, -0.24);
+      parts.rightHand.rotation.set(0.05, -0.1, 0.24);
+      break;
+    case 'incineratorBurn':
+    case 'incinerator':
+      parts.leftHand.position.set(-0.2, -0.22 + beat * 0.08, -1.02);
+      parts.rightHand.position.set(0.2, -0.22 - beat * 0.05, -1.02);
+      parts.leftSleeve.rotation.set(1.78, 0.22, -0.18);
+      parts.rightSleeve.rotation.set(1.78, -0.22, 0.18);
+      parts.leftHand.rotation.set(0.35, 0.22, -0.2);
+      parts.rightHand.rotation.set(0.35, -0.22, 0.2);
+      break;
+    case 'exitUnlock':
+    case 'exit':
+      parts.leftHand.position.set(-0.22, -0.48, -0.74);
+      parts.rightHand.position.set(0.34 + motion * 0.06, -0.2, -0.92);
+      parts.rightSleeve.rotation.set(1.86, -0.48, 0.34 + beat * 0.24);
+      parts.rightHand.rotation.set(0.42, -0.72, 0.42 + motion * 0.25);
+      break;
+    case 'gateRun':
+    case 'gate':
+      group.position.set(Math.sin(motion * 2) * 0.018, beat * 0.035, 0);
+      parts.leftHand.position.set(-0.34 - motion * 0.08, -0.3 + beat * 0.08, -0.96);
+      parts.rightHand.position.set(0.34 + motion * 0.08, -0.3 - beat * 0.08, -0.96);
+      parts.leftSleeve.rotation.set(1.72 + motion * 0.28, 0.34, -0.4);
+      parts.rightSleeve.rotation.set(1.72 - motion * 0.28, -0.34, 0.4);
       break;
     case 'keyTake':
       parts.leftHand.position.set(-0.28, -0.48, -0.78);
       parts.rightHand.position.set(0.1 + motion * 0.12, -0.26 - beat * 0.06, -0.9);
       parts.rightSleeve.rotation.set(1.72, -0.1, 0.24 + beat * 0.28);
+      parts.rightHand.rotation.set(0.18, -0.3, 0.58 + beat * 0.35);
       break;
     case 'vacuumUnlock':
+    case 'ghostKey':
       parts.leftHand.position.set(-0.22, -0.3, -0.86);
       parts.rightHand.position.set(0.24 + Math.sin(motion * 3) * 0.06, -0.24, -0.88);
       parts.rightSleeve.rotation.set(1.66, -0.28, 0.45 + Math.sin(motion * 3) * 0.35);
+      parts.rightHand.rotation.set(0.18, -0.42, 0.72 + Math.sin(motion * 3) * 0.42);
+      break;
+    case 'ghostVacuum':
+      parts.leftHand.position.set(-0.28, -0.24 + beat * 0.04, -1.0);
+      parts.rightHand.position.set(0.28, -0.24 - beat * 0.04, -1.0);
+      parts.leftSleeve.rotation.set(1.6, 0.26, -0.28);
+      parts.rightSleeve.rotation.set(1.6, -0.26, 0.28);
+      parts.leftHand.rotation.set(0.25, 0.28, -0.2);
+      parts.rightHand.rotation.set(0.25, -0.28, 0.2);
       break;
     case 'vacuumSuck':
       group.position.set(shake * 0.025, beat * 0.025, 0);
@@ -1318,6 +1480,7 @@ function updateHeldItemHand(group: THREE.Group, motion: number, item?: string) {
   parts.rightSleeve.position.set(heavy ? 0.19 : 0.27, heavy ? -0.28 + bob : -0.35 + bob, heavy ? -0.62 : -0.58);
   parts.rightHand.position.set(heavy ? 0.28 : 0.38, heavy ? -0.39 + bob : -0.47 + bob, heavy ? -0.92 : -0.82);
   parts.rightSleeve.rotation.set(heavy ? 1.42 : 1.18, heavy ? -0.16 : -0.42, heavy ? 0.18 : 0.34);
+  parts.rightHand.rotation.set(heavy ? 0.28 : 0.18, heavy ? -0.34 : -0.58, heavy ? 0.16 : 0.36);
   parts.rightHand.scale.setScalar(1);
 
   parts.heldItemSlot.position.set(flashlight ? 0.3 : 0.36, flashlight ? -0.38 + bob : -0.43 + bob, flashlight ? -0.98 : -0.9);
@@ -1393,6 +1556,7 @@ export function ThreeArchive({
   const ghostCabinetDoorRef = useRef<THREE.Group | null>(null);
   const ghostVacuumRef = useRef<THREE.Group | null>(null);
   const sourceItemRefs = useRef<Record<string, THREE.Object3D | null>>({});
+  const interactionObjectRefs = useRef<Record<string, THREE.Object3D | null>>({});
   const droppedLayerRef = useRef<THREE.Group | null>(null);
   const actionActiveRef = useRef(actionActive);
   const actionTargetRef = useRef<ActionTarget | null>(actionTarget);
@@ -1490,6 +1654,7 @@ export function ThreeArchive({
 
     const outside = addOutside(scene);
     sourceItemRefs.current['Ключ от стеклянной полки'] = outside.key;
+    interactionObjectRefs.current.gate = outside.gate;
 
     const droppedLayer = new THREE.Group();
     scene.add(droppedLayer);
@@ -1516,6 +1681,7 @@ export function ThreeArchive({
     box(scene, [0.22, 4.35, 5.75], [3.0, 2.17, -3.825], 0x1c1511);
     box(scene, [0.22, 4.35, 5.75], [3.0, 2.17, 3.825], 0x1c1511);
     box(scene, [0.22, 2.0, 2.35], [3.0, 3.35, 0], 0x1c1511);
+    interactionObjectRefs.current.incinerator = addIncinerator(scene);
     roomDoorsRef.current = [addRoomDoor(scene, -3.02, true), addRoomDoor(scene, 3.02, false)];
     addLabel(scene, 'ROOM 1', [-5.9, 2.35, -4.65]);
     addLabel(scene, 'ROOM 2', [5.9, 2.35, -4.65]);
@@ -1536,16 +1702,22 @@ export function ThreeArchive({
     box(scene, [0.16, 1.95, 1.3], [6.05, 0.98, -4.48], 0x241811);
     box(scene, [0.16, 1.95, 1.3], [8.15, 0.98, -4.48], 0x241811);
 
-    addTable(scene);
+    const tableParts = addTable(scene);
+    interactionObjectRefs.current.deskPapers = tableParts.papers;
     const personalFolder = new THREE.Group();
     personalFolder.position.set(-1.25, 0.96, -1.98);
     scene.add(personalFolder);
-    box(personalFolder as unknown as THREE.Scene, [0.82, 0.06, 0.44], [0, 0, 0], 0xd8c9a8);
+    const personalFolderCover = box(personalFolder as unknown as THREE.Scene, [0.82, 0.06, 0.44], [0, 0, 0], 0xd8c9a8);
+    personalFolder.userData.cover = personalFolderCover;
     sourceItemRefs.current['Папка без номера'] = personalFolder;
+    interactionObjectRefs.current.personalFolder = personalFolder;
     sourceItemRefs.current['Фонарик'] = addFlashlightModel(scene);
-    coffeeLiquidRef.current = addCoffee(scene);
-    addRedFolder(scene);
-    addCameraStation(scene);
+    interactionObjectRefs.current.flashlight = sourceItemRefs.current['Фонарик'];
+    const coffee = addCoffee(scene);
+    coffeeLiquidRef.current = coffee.liquid;
+    interactionObjectRefs.current.coffee = coffee.group;
+    interactionObjectRefs.current.redFolder = addRedFolder(scene);
+    interactionObjectRefs.current.cameraStation = addCameraStation(scene);
     addSecurityCamera(scene, [-7.8, 2.65, -6.54], 0);
     addSecurityCamera(scene, [7.8, 2.65, -6.54], 0);
     addSecurityCamera(scene, [-10.94, 2.65, 4.9], Math.PI / 2);
@@ -1556,10 +1728,14 @@ export function ThreeArchive({
     box(emptyCase418 as unknown as THREE.Scene, [0.12, 0.48, 0.62], [0, 0, 0], 0xd8c9a8);
     box(emptyCase418 as unknown as THREE.Scene, [0.04, 0.5, 0.64], [-0.08, 0, 0], 0xa51f24);
     sourceItemRefs.current['Пустое дело №418'] = emptyCase418;
+    interactionObjectRefs.current.shelfCase = emptyCase418;
 
     sourceItemRefs.current['Личное дело №417'] = addCase417(scene);
-    addBoxes(scene);
+    interactionObjectRefs.current.case417 = sourceItemRefs.current['Личное дело №417'];
+    interactionObjectRefs.current.boxes = addBoxes(scene);
     exitDoorRef.current = addSwitchAndExit(scene);
+    interactionObjectRefs.current.switchLever = exitDoorRef.current.userData.switchLever as THREE.Object3D;
+    interactionObjectRefs.current.exitDoor = exitDoorRef.current;
 
     const playerGroup = createPerson();
     const initialPlayerPosition = toWorld(player);
@@ -1678,6 +1854,135 @@ export function ThreeArchive({
         perfFrameCount = 0;
         perfElapsed = 0;
       }
+
+      const activeTarget = actionActiveRef.current ? actionTargetRef.current : null;
+      const actionBeat = Math.abs(Math.sin(frame * 7.5));
+      const rememberBase = (object: THREE.Object3D) => {
+        if (!object.userData.basePosition) object.userData.basePosition = object.position.clone();
+        if (!object.userData.baseRotation) object.userData.baseRotation = object.rotation.clone();
+      };
+      Object.values(interactionObjectRefs.current).forEach((object) => {
+        if (object) rememberBase(object);
+      });
+
+      const boxes = interactionObjectRefs.current.boxes as THREE.Group | undefined;
+      const boxLid = boxes?.userData.lid as THREE.Object3D | undefined;
+      if (boxLid) {
+        const open = activeTarget === 'boxesUnpack' || activeTarget === 'boxes';
+        boxLid.rotation.x = THREE.MathUtils.lerp(boxLid.rotation.x, open ? -1.05 - actionBeat * 0.18 : 0, 0.16);
+        boxLid.position.y = THREE.MathUtils.lerp(boxLid.position.y, open ? 0.72 : 0.58, 0.14);
+      }
+
+      const papers = interactionObjectRefs.current.deskPapers as THREE.Group | undefined;
+      if (papers) {
+        const sorting = activeTarget === 'deskSort' || activeTarget === 'deskOpen';
+        papers.children.forEach((child, index) => {
+          const baseX = -0.36 + index * 0.24;
+          const spread = sorting ? Math.sin(frame * 6 + index) * 0.1 : 0;
+          child.position.x = THREE.MathUtils.lerp(child.position.x, baseX + spread, 0.18);
+          child.position.y = THREE.MathUtils.lerp(child.position.y, index * 0.015 + (sorting ? actionBeat * 0.05 : 0), 0.18);
+          child.rotation.z = THREE.MathUtils.lerp(child.rotation.z, sorting ? Math.sin(frame * 5 + index) * 0.12 : 0, 0.16);
+        });
+      }
+
+      const personalFolder = interactionObjectRefs.current.personalFolder as THREE.Group | undefined;
+      const personalCover = personalFolder?.userData.cover as THREE.Object3D | undefined;
+      if (personalFolder && personalCover) {
+        const openingPersonal = activeTarget === 'deskOpen';
+        const base = personalFolder.userData.basePosition as THREE.Vector3;
+        personalFolder.position.y = THREE.MathUtils.lerp(personalFolder.position.y, base.y + (openingPersonal ? 0.13 : 0), 0.16);
+        personalCover.rotation.x = THREE.MathUtils.lerp(personalCover.rotation.x, openingPersonal ? -0.95 - actionBeat * 0.12 : 0, 0.16);
+      }
+
+      const coffeeCup = interactionObjectRefs.current.coffee;
+      if (coffeeCup) {
+        const drinking = activeTarget === 'coffeeMirror' || activeTarget === 'coffee';
+        const base = coffeeCup.userData.basePosition as THREE.Vector3;
+        coffeeCup.position.y = THREE.MathUtils.lerp(coffeeCup.position.y, base.y + (drinking ? 0.42 + actionBeat * 0.05 : 0), 0.14);
+        coffeeCup.rotation.z = THREE.MathUtils.lerp(coffeeCup.rotation.z, drinking ? -0.35 - actionBeat * 0.08 : 0, 0.14);
+      }
+
+      const redFolder = interactionObjectRefs.current.redFolder as THREE.Group | undefined;
+      const redCover = redFolder?.userData.cover as THREE.Object3D | undefined;
+      const redSeal = redFolder?.userData.seal as THREE.Object3D | undefined;
+      if (redCover) {
+        const checking = activeTarget === 'redSeal' || activeTarget === 'redFolder';
+        redCover.rotation.z = THREE.MathUtils.lerp(redCover.rotation.z, checking ? -0.32 - actionBeat * 0.12 : 0, 0.16);
+        if (redSeal) redSeal.scale.setScalar(THREE.MathUtils.lerp(redSeal.scale.x, checking ? 1.22 + actionBeat * 0.18 : 1, 0.16));
+      }
+
+      const case417 = interactionObjectRefs.current.case417 as THREE.Group | undefined;
+      const caseLid = case417?.userData.lid as THREE.Object3D | undefined;
+      if (caseLid) {
+        const reading = activeTarget === 'case417Read' || activeTarget === 'case417';
+        caseLid.rotation.x = THREE.MathUtils.lerp(caseLid.rotation.x, reading ? -0.78 - actionBeat * 0.22 : 0, 0.15);
+        caseLid.position.y = THREE.MathUtils.lerp(caseLid.position.y, reading ? 0.48 : 0.37, 0.15);
+      }
+
+      const shelfCase = interactionObjectRefs.current.shelfCase;
+      if (shelfCase) {
+        const pullingShelfCase = activeTarget === 'shelvesDust' || activeTarget === 'shelves';
+        const base = shelfCase.userData.basePosition as THREE.Vector3;
+        shelfCase.position.x = THREE.MathUtils.lerp(shelfCase.position.x, base.x + (pullingShelfCase ? 0.42 + actionBeat * 0.05 : 0), 0.14);
+        shelfCase.position.y = THREE.MathUtils.lerp(shelfCase.position.y, base.y + (pullingShelfCase ? 0.08 : 0), 0.14);
+        shelfCase.rotation.z = THREE.MathUtils.lerp(shelfCase.rotation.z, pullingShelfCase ? -0.18 : 0, 0.14);
+      }
+
+      const flashlightObject = interactionObjectRefs.current.flashlight;
+      if (flashlightObject) {
+        const usingFlashlight = activeTarget === 'flashlightBeam' || activeTarget === 'flashlight';
+        const base = flashlightObject.userData.basePosition as THREE.Vector3;
+        flashlightObject.position.y = THREE.MathUtils.lerp(flashlightObject.position.y, base.y + (usingFlashlight ? 0.22 + actionBeat * 0.05 : 0), 0.18);
+        flashlightObject.rotation.y = THREE.MathUtils.lerp(flashlightObject.rotation.y, usingFlashlight ? Math.sin(frame * 7) * 0.55 : 0, 0.18);
+      }
+
+      const switchLever = interactionObjectRefs.current.switchLever;
+      if (switchLever) {
+        const flipping = activeTarget === 'switch';
+        switchLever.rotation.z = THREE.MathUtils.lerp(switchLever.rotation.z, flipping ? -0.78 + actionBeat * 0.22 : 0, 0.2);
+      }
+
+      const cameraStation = interactionObjectRefs.current.cameraStation as THREE.Group | undefined;
+      const cameraScreen = cameraStation?.userData.screen as THREE.Mesh | undefined;
+      const cameraKnob = cameraStation?.userData.knob as THREE.Object3D | undefined;
+      if (cameraStation && cameraScreen && cameraKnob) {
+        const tuning = activeTarget === 'cameraTune' || activeTarget === 'camera';
+        cameraKnob.rotation.y = THREE.MathUtils.lerp(cameraKnob.rotation.y, tuning ? frame * 4 : 0, 0.28);
+        cameraScreen.scale.y = THREE.MathUtils.lerp(cameraScreen.scale.y, tuning ? 1 + actionBeat * 0.12 : 1, 0.18);
+        if (cameraScreen.material instanceof THREE.MeshStandardMaterial) {
+          cameraScreen.material.emissive.setHex(tuning ? 0x1d6d55 : 0x000000);
+          cameraScreen.material.emissiveIntensity = tuning ? 0.85 + actionBeat * 0.35 : 0;
+        }
+      }
+
+      const incinerator = interactionObjectRefs.current.incinerator as THREE.Group | undefined;
+      const incineratorLid = incinerator?.userData.lid as THREE.Object3D | undefined;
+      const incineratorGlow = incinerator?.userData.glow as THREE.Mesh | undefined;
+      if (incinerator && incineratorLid) {
+        const burning = activeTarget === 'incineratorBurn' || activeTarget === 'incinerator';
+        incineratorLid.rotation.x = THREE.MathUtils.lerp(incineratorLid.rotation.x, burning ? -1.15 : 0, 0.18);
+        incineratorLid.position.z = THREE.MathUtils.lerp(incineratorLid.position.z, burning ? -0.22 : 0, 0.18);
+        if (incineratorGlow?.material instanceof THREE.MeshBasicMaterial) {
+          incineratorGlow.material.opacity = THREE.MathUtils.lerp(incineratorGlow.material.opacity, burning ? 0.42 + actionBeat * 0.24 : 0, 0.16);
+        }
+      }
+
+      const gate = interactionObjectRefs.current.gate as THREE.Group | undefined;
+      const gateLeft = gate?.userData.left as THREE.Object3D | undefined;
+      const gateRight = gate?.userData.right as THREE.Object3D | undefined;
+      if (gateLeft && gateRight) {
+        const openingGate = activeTarget === 'gateRun' || activeTarget === 'gate';
+        gateLeft.rotation.y = THREE.MathUtils.lerp(gateLeft.rotation.y, openingGate ? -1.18 - actionBeat * 0.12 : -0.72, 0.14);
+        gateRight.rotation.y = THREE.MathUtils.lerp(gateRight.rotation.y, openingGate ? 1.18 + actionBeat * 0.12 : 0.72, 0.14);
+      }
+
+      const vacuumObject = ghostVacuumRef.current;
+      if (vacuumObject) {
+        const takingVacuum = activeTarget === 'ghostVacuum';
+        vacuumObject.rotation.z = THREE.MathUtils.lerp(vacuumObject.rotation.z, takingVacuum ? Math.sin(frame * 8) * 0.18 : 0, 0.16);
+        vacuumObject.position.y = THREE.MathUtils.lerp(vacuumObject.position.y, takingVacuum ? 1.58 + actionBeat * 0.12 : 1.48, 0.16);
+      }
+
       if (exitDoorRef.current) {
         const doorOpening = actionActiveRef.current && actionTargetRef.current === 'exitUnlock';
         if (doorOpening) exitDoorOpenedRef.current = true;
@@ -1704,9 +2009,10 @@ export function ThreeArchive({
           const dx = playerRef.current!.position.x - door.position.x;
           const dz = playerRef.current!.position.z - door.position.z;
           const nearby = Math.hypot(dx, dz) < 1.45;
+          const listening = activeTarget === 'hallListen' || activeTarget === 'hall';
           const sign = door.userData.opensLeft ? -1 : 1;
-          const targetRotation = nearby ? sign * 1.18 : 0;
-          door.rotation.y = THREE.MathUtils.lerp(door.rotation.y, targetRotation, 0.1);
+          const targetRotation = listening ? sign * (0.18 + Math.sin(frame * 9) * 0.05) : nearby ? sign * 1.18 : 0;
+          door.rotation.y = THREE.MathUtils.lerp(door.rotation.y, targetRotation, listening ? 0.18 : 0.1);
         });
       }
       if (playerRef.current) {

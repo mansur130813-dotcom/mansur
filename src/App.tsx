@@ -78,23 +78,34 @@ export default function App() {
     return (data?.save_data as GameSave | null) ?? null;
   }
 
-  async function startGame(nextUser: User | null = user) {
-    sound.start();
+  async function startGame(nextUser: User | null = user, options: { startSound?: boolean } = {}) {
+    if (options.startSound !== false) sound.start();
+
     if (isGoogleUser(nextUser) && nextUser) {
       const save = await loadGoogleSave(nextUser);
       setInitialSave(save);
+    } else if (nextUser) {
+      setInitialSave(null);
+      setSaveStatus('Вход выполнен. Облачное сохранение включается только для Google-аккаунта.');
     } else {
       setInitialSave(null);
       setSaveStatus('Гость: прогресс хранится только до перезапуска.');
     }
+
     setStarted(true);
   }
 
-  async function startAuthenticated() {
+  async function startAuthenticated(auto = false) {
     const { data } = await supabase.auth.getSession();
     const nextUser = data.session?.user ?? null;
     setUser(nextUser);
-    await startGame(nextUser);
+
+    if (!nextUser) {
+      setSaveStatus('Сначала войди через email или Google.');
+      return;
+    }
+
+    await startGame(nextUser, { startSound: !auto });
   }
 
   function toggleSound() {
@@ -126,8 +137,8 @@ export default function App() {
         saveStatus={saveStatus}
         achievements={game.achievements}
         allAchievements={game.allAchievements}
-        onGuestStart={() => void startGame(null)}
-        onAuthenticated={() => void startAuthenticated()}
+        onGuestStart={() => void startGame(null, { startSound: true })}
+        onAuthenticated={(auto) => void startAuthenticated(Boolean(auto))}
         onToggleSound={toggleSound}
       />
     );
