@@ -390,7 +390,6 @@ input:focus {
   display: block;
   width: 100%;
   height: 100%;
-  image-rendering: pixelated;
 }
 
 .uneasy .room {
@@ -430,16 +429,16 @@ input:focus {
   z-index: 32;
   pointer-events: none;
   background:
-    linear-gradient(90deg, transparent 0 21px, rgba(246, 237, 218, 0.055) 21px 22px, transparent 22px 44px),
-    linear-gradient(0deg, transparent 0 17px, rgba(216, 161, 75, 0.04) 17px 18px, transparent 18px 36px);
-  background-size: 44px 44px, 36px 36px;
+    linear-gradient(90deg, transparent 0 31px, rgba(246, 237, 218, 0.035) 31px 32px, transparent 32px 64px),
+    linear-gradient(0deg, transparent 0 27px, rgba(216, 161, 75, 0.025) 27px 28px, transparent 28px 56px);
+  background-size: 64px 64px, 56px 56px;
   mix-blend-mode: screen;
-  opacity: 0.28;
+  opacity: 0.16;
   animation: pixelDrift 7s steps(6) infinite;
 }
 
 .dark .room::before {
-  opacity: 0.26;
+  opacity: 0.18;
 }
 
 .floor-grid {

@@ -482,9 +482,11 @@ function box(
 ) {
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(...size),
-    new THREE.MeshStandardMaterial({ color, roughness: 0.88, metalness: 0.05 }),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.78, metalness: 0.08 }),
   );
   mesh.position.set(...position);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   scene.add(mesh);
   return mesh;
 }
@@ -506,7 +508,7 @@ function transparentBox(
 }
 
 function createPixelDust() {
-  const count = 90;
+  const count = 70;
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const color = new THREE.Color();
@@ -529,10 +531,10 @@ function createPixelDust() {
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
   const material = new THREE.PointsMaterial({
-    size: 0.045,
+    size: 0.035,
     vertexColors: true,
     transparent: true,
-    opacity: 0.28,
+    opacity: 0.18,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
   });
@@ -1315,6 +1317,16 @@ function createFirstPersonHands() {
   return group;
 }
 
+function attachPalmToSleeve(sleeve: THREE.Mesh, hand: THREE.Group, side: -1 | 1, reach = 0.34) {
+  const wristOffset = new THREE.Vector3(side * 0.025, -reach, 0.02).applyEuler(sleeve.rotation);
+  hand.position.copy(sleeve.position).add(wristOffset);
+}
+
+function attachFirstPersonPalms(parts: FirstPersonHandsParts) {
+  attachPalmToSleeve(parts.leftSleeve, parts.leftHand, -1);
+  attachPalmToSleeve(parts.rightSleeve, parts.rightHand, 1);
+}
+
 function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null, motion: number) {
   const parts = group.userData.parts as FirstPersonHandsParts;
   const beat = Math.abs(motion);
@@ -1460,6 +1472,8 @@ function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null,
       parts.rightHand.position.set(0.26, -0.38 - beat * 0.08, -0.84);
       break;
   }
+
+  attachFirstPersonPalms(parts);
 }
 
 function updateHeldItemHand(group: THREE.Group, motion: number, item?: string) {
@@ -1480,8 +1494,8 @@ function updateHeldItemHand(group: THREE.Group, motion: number, item?: string) {
   parts.heldItemSlot.visible = true;
 
   parts.rightSleeve.position.set(heavy ? 0.19 : 0.27, heavy ? -0.28 + bob : -0.35 + bob, heavy ? -0.62 : -0.58);
-  parts.rightHand.position.set(heavy ? 0.28 : 0.38, heavy ? -0.39 + bob : -0.47 + bob, heavy ? -0.92 : -0.82);
   parts.rightSleeve.rotation.set(heavy ? 1.42 : 1.18, heavy ? -0.16 : -0.42, heavy ? 0.18 : 0.34);
+  attachPalmToSleeve(parts.rightSleeve, parts.rightHand, 1);
   parts.rightHand.rotation.set(heavy ? 0.28 : 0.18, heavy ? -0.34 : -0.58, heavy ? 0.16 : 0.36);
   parts.rightHand.scale.setScalar(1);
 
@@ -1633,11 +1647,11 @@ export function ThreeArchive({
     firstPersonHandsRef.current = firstPersonHands;
 
     const renderer = new THREE.WebGLRenderer({
-      antialias: false,
+      antialias: true,
       powerPreference: 'high-performance',
     });
     const minPixelRatio = 0.7;
-    const maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.18);
+    const maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.35);
     let adaptivePixelRatio = maxPixelRatio;
     const setRenderPixelRatio = (value: number) => {
       const next = THREE.MathUtils.clamp(value, minPixelRatio, maxPixelRatio);
@@ -1650,8 +1664,9 @@ export function ThreeArchive({
     renderer.setPixelRatio(adaptivePixelRatio);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
-    renderer.shadowMap.enabled = false;
+    renderer.toneMappingExposure = 1.42;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
 
     const outside = addOutside(scene);
@@ -1664,7 +1679,7 @@ export function ThreeArchive({
 
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(22, 13.2),
-      new THREE.MeshStandardMaterial({ color: 0x33251c, roughness: 0.92 }),
+      new THREE.MeshStandardMaterial({ color: 0x3a2a1f, roughness: 0.84, metalness: 0.04 }),
     );
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
@@ -1764,11 +1779,14 @@ export function ThreeArchive({
     const ambient = new THREE.AmbientLight(0x8a7356, 0.75);
     scene.add(ambient);
 
-    const hemisphere = new THREE.HemisphereLight(0xc7a76f, 0x140f0b, 0.85);
+    const hemisphere = new THREE.HemisphereLight(0xd1b77f, 0x140f0b, 0.95);
     scene.add(hemisphere);
 
-    const lamp = new THREE.PointLight(0xd8a14b, 5.0, 13);
+    const lamp = new THREE.PointLight(0xd8a14b, 5.4, 13);
     lamp.position.set(-1.8, 3.2, 1.0);
+    lamp.castShadow = true;
+    lamp.shadow.mapSize.set(1024, 1024);
+    lamp.shadow.bias = -0.0006;
     scene.add(lamp);
     lampRef.current = lamp;
 
@@ -1790,6 +1808,13 @@ export function ThreeArchive({
 
     const moonGlow = new THREE.DirectionalLight(0x9fb8c9, 1.2);
     moonGlow.position.set(-4, 7, 12);
+    moonGlow.castShadow = true;
+    moonGlow.shadow.mapSize.set(1024, 1024);
+    moonGlow.shadow.camera.left = -12;
+    moonGlow.shadow.camera.right = 12;
+    moonGlow.shadow.camera.top = 12;
+    moonGlow.shadow.camera.bottom = -12;
+    moonGlow.shadow.bias = -0.0008;
     scene.add(moonGlow);
 
     const pathGlow = new THREE.PointLight(0x9fb8c9, 0.82, 8.2);
@@ -2154,8 +2179,8 @@ export function ThreeArchive({
         dust.rotation.y += 0.0009;
         dust.rotation.x = Math.sin(frame * 0.28) * 0.012;
         if (dust.material instanceof THREE.PointsMaterial) {
-          dust.material.opacity = lightOn ? 0.32 + Math.sin(frame * 0.8) * 0.05 : 0.48;
-          dust.material.size = lightOn ? 0.045 : 0.058;
+          dust.material.opacity = lightOn ? 0.18 + Math.sin(frame * 0.8) * 0.03 : 0.3;
+          dust.material.size = lightOn ? 0.035 : 0.045;
         }
       }
       if (targetGlowRef.current) {
