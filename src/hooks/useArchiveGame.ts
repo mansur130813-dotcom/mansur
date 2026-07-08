@@ -412,6 +412,11 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
   function addInventory(item: string) {
     if (inventory.includes(item)) return true;
     if (inventory.length > 0) {
+      if (item === hotspots.orangeKey.label) {
+        setDroppedItems((items) => [droppedItem(inventory[0], player), ...items]);
+        setInventory([item]);
+        return true;
+      }
       setMessage(`Сначала выброси "${inventory[0]}", потом возьми "${item}".`);
       return false;
     }
@@ -692,7 +697,7 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
       inventory.includes('Оранжевый ключ') &&
       !itemIsInWorld('Ключ от стеклянной полки');
 
-    if (inventory.length > 0 && !canUseKeyOnGlassShelf && !canUseOrangeKeyOnOutdoorShelf) {
+    if (inventory.length > 0 && closest.id !== 'orangeKey' && !canUseKeyOnGlassShelf && !canUseOrangeKeyOnOutdoorShelf) {
       setMessage(`Сначала выброси "${inventory[0]}" клавишей Q, потом делай задание.`);
       return;
     }
