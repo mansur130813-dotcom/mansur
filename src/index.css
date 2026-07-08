@@ -754,7 +754,7 @@ input:focus {
   width: min(340px, calc(100vw - 36px));
   overflow-y: auto;
   padding-left: 4px;
-  display: grid;
+  display: none;
   gap: 10px;
   align-content: start;
   pointer-events: auto;
@@ -804,6 +804,7 @@ input:focus {
 }
 
 .fear-meter {
+  display: none;
   height: 12px;
   overflow: hidden;
   border: 1px solid rgba(74, 60, 48, 0.62);
@@ -1314,20 +1315,27 @@ input:focus {
   .menu-layout {
     grid-template-columns: 1fr;
   }
+}
 
+@media (hover: none) and (pointer: coarse) {
   .mobile-controls {
     display: flex;
   }
 
   .hud {
+    display: grid;
     width: min(320px, calc(100vw - 24px));
     right: 12px;
     top: 38px;
     bottom: 12px;
   }
+
+  .fear-meter {
+    display: block;
+  }
 }
 
-@media (max-width: 640px) {
+@media (hover: none) and (pointer: coarse) and (max-width: 640px) {
   .hud {
     width: calc(100vw - 20px);
     left: 10px;
@@ -1371,12 +1379,12 @@ input:focus {
   }
 
   .objective-toast {
-    bottom: 10px;
+    bottom: 150px;
     max-width: calc(100vw - 20px);
   }
 }
 
-@media (max-width: 900px) and (orientation: landscape) {
+@media (hover: none) and (pointer: coarse) and (max-width: 900px) and (orientation: landscape) {
   .hud {
     top: 10px;
     bottom: auto;
@@ -1386,6 +1394,11 @@ input:focus {
 
   .mobile-controls {
     bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .objective-toast {
+    bottom: 84px;
+    width: min(420px, 52vw);
   }
 
   .mobile-stick {
