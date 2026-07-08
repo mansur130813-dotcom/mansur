@@ -520,6 +520,7 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
   }
 
   function openCameraViewer() {
+    return;
     playSound('camera');
     setCameraViewer({ open: true, index: 0 });
     setMessage('Мониторы включились. Найди запись, где камера показывает не место, а очередь событий.');
@@ -696,6 +697,8 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
 
     if (closest.id === 'camera') {
       openCameraViewer();
+      unlockAchievement('camera-truth');
+      finishObjective();
       return;
     }
 
