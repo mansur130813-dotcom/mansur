@@ -8,9 +8,8 @@ type Props = {
   cameraViewer: { open: boolean; index: number };
   onPreviousCamera: () => void;
   onNextCamera: () => void;
-  onSelectCamera: (index: number) => void;
   onCloseCamera: () => void;
-  onConfirmCamera: (index?: number) => void;
+  onConfirmCamera: () => void;
 };
 
 export function Hud({
@@ -21,7 +20,6 @@ export function Hud({
   cameraViewer,
   onPreviousCamera,
   onNextCamera,
-  onSelectCamera,
   onCloseCamera,
   onConfirmCamera,
 }: Props) {
@@ -55,24 +53,10 @@ export function Hud({
                 <div className="camera-scanline" />
                 <strong>{feed.status}</strong>
                 <p>{feed.body}</p>
-                <div className="camera-mark-buttons" aria-label="Отметить запись камеры">
-                  {cameraFeeds.map((cameraFeed, index) => (
-                    <button
-                      type="button"
-                      key={cameraFeed.id}
-                      className={index === cameraViewer.index ? 'camera-mark-button active' : 'camera-mark-button'}
-                      onClick={() => {
-                        onSelectCamera(index);
-                        onConfirmCamera(index);
-                      }}
-                    >
-                      {cameraFeed.label.split(' / ')[0]}
-                    </button>
-                  ))}
-                </div>
               </div>
               <div className="camera-actions">
                 <button type="button" className="quiet-button" onClick={onPreviousCamera}>Назад</button>
+                <button type="button" onClick={onConfirmCamera}>Отметить</button>
                 <button type="button" className="quiet-button" onClick={onNextCamera}>Дальше</button>
                 <button type="button" className="quiet-button" onClick={onCloseCamera}>Закрыть</button>
               </div>
