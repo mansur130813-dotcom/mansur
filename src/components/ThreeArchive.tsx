@@ -1161,12 +1161,19 @@ function createPalm(material: THREE.Material, side: -1 | 1, scale = 1) {
 function createPerson(dark = false) {
   const group = new THREE.Group();
   const makePersonMaterial = (color: number, roughness: number, emissive = 0x000000) =>
-    new THREE.MeshStandardMaterial({ color, roughness, emissive });
-  const skin = dark ? 0x050403 : 0xc89f79;
-  const coat = dark ? 0x050403 : 0x315783;
-  const pants = dark ? 0x050403 : 0x2b2f3a;
-  const shoes = dark ? 0x020202 : 0x0c0b0a;
-  const badge = dark ? 0x111111 : 0xf1ddb0;
+    new THREE.MeshStandardMaterial({
+      color,
+      roughness,
+      emissive,
+      transparent: dark,
+      opacity: dark ? 0.58 : 1,
+      depthWrite: !dark,
+    });
+  const skin = dark ? 0xdde8ee : 0xc89f79;
+  const coat = dark ? 0xcfdce5 : 0x315783;
+  const pants = dark ? 0xb7c7d2 : 0x2b2f3a;
+  const shoes = dark ? 0x9fb1bd : 0x0c0b0a;
+  const badge = dark ? 0xeaf4f8 : 0xf1ddb0;
 
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(0.18, 24, 18),
@@ -1176,62 +1183,30 @@ function createPerson(dark = false) {
   head.castShadow = true;
   group.add(head);
 
-  const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(0.185, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2),
-    makePersonMaterial(dark ? 0x020202 : 0x21140f, 0.9),
-  );
-  hair.position.set(0, 1.43, -0.01);
-  group.add(hair);
+  if (!dark) {
+    const hair = new THREE.Mesh(
+      new THREE.SphereGeometry(0.185, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+      makePersonMaterial(0x21140f, 0.9),
+    );
+    hair.position.set(0, 1.43, -0.01);
+    group.add(hair);
+  }
 
   if (dark) {
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const pupilMaterial = new THREE.MeshBasicMaterial({ color: 0x7d0008 });
-    const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0xb80013 });
-    const toothMaterial = new THREE.MeshBasicMaterial({ color: 0xfff1d5 });
-
-    const eyeShape = new THREE.Shape();
-    eyeShape.moveTo(-0.058, 0);
-    eyeShape.quadraticCurveTo(-0.014, 0.034, 0.06, 0.012);
-    eyeShape.quadraticCurveTo(0.014, -0.018, -0.058, 0);
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xeafaff, transparent: true, opacity: 0.86 });
+    const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x6e8994, transparent: true, opacity: 0.62 });
 
     [-1, 1].forEach((side) => {
-      const eye = new THREE.Mesh(new THREE.ShapeGeometry(eyeShape), eyeMaterial);
-      eye.position.set(side * 0.072, 0.046, 0.184);
-      eye.rotation.z = side * -0.18;
-      eye.scale.x = side;
+      const eye = new THREE.Mesh(new THREE.CircleGeometry(0.032, 18), eyeMaterial);
+      eye.position.set(side * 0.066, 0.035, 0.185);
+      eye.scale.set(0.74, 1.05, 1);
       head.add(eye);
-
-      const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.013, 16), pupilMaterial);
-      pupil.position.set(side * 0.073, 0.044, 0.187);
-      pupil.scale.set(0.75, 1.25, 1);
-      head.add(pupil);
     });
 
-    const grinShape = new THREE.Shape();
-    grinShape.moveTo(-0.118, -0.072);
-    grinShape.quadraticCurveTo(-0.052, -0.12, 0.018, -0.112);
-    grinShape.quadraticCurveTo(0.082, -0.104, 0.124, -0.066);
-    grinShape.quadraticCurveTo(0.058, -0.084, -0.002, -0.084);
-    grinShape.quadraticCurveTo(-0.064, -0.084, -0.118, -0.072);
-
-    const grin = new THREE.Mesh(new THREE.ShapeGeometry(grinShape), mouthMaterial);
-    grin.position.set(0, 0, 0.181);
-    grin.rotation.z = 0.08;
-    head.add(grin);
-
-    const toothShape = new THREE.Shape();
-    toothShape.moveTo(-0.012, 0);
-    toothShape.lineTo(0.012, 0);
-    toothShape.lineTo(0, -0.042);
-    toothShape.closePath();
-
-    [-0.052, 0.058].forEach((x, index) => {
-      const tooth = new THREE.Mesh(new THREE.ShapeGeometry(toothShape), toothMaterial);
-      tooth.position.set(x, -0.078, 0.184);
-      tooth.scale.set(1.25, 1.6, 1);
-      tooth.rotation.z = 0.05 + (index === 0 ? -0.08 : 0.08);
-      head.add(tooth);
-    });
+    const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.026, 18), mouthMaterial);
+    mouth.position.set(0, -0.072, 0.187);
+    mouth.scale.set(0.72, 1.35, 1);
+    head.add(mouth);
   }
 
   group.add(capsule(0.06, 0.08, skin, [0, 1.13, 0]));
@@ -1282,6 +1257,27 @@ function createPerson(dark = false) {
     leftShoe,
     rightShoe,
   );
+
+  if (dark) {
+    const shroudMaterial = new THREE.MeshStandardMaterial({
+      color: 0xdbe7ee,
+      emissive: 0x91b6c8,
+      emissiveIntensity: 0.22,
+      roughness: 0.9,
+      transparent: true,
+      opacity: 0.38,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const shroud = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.02, 28, 1, true), shroudMaterial);
+    shroud.position.set(0, 0.38, 0);
+    shroud.rotation.y = Math.PI / 28;
+    group.add(shroud);
+
+    const glow = new THREE.PointLight(0xaed8e6, 0.42, 1.8);
+    glow.position.set(0, 0.92, 0.04);
+    group.add(glow);
+  }
 
   group.userData.parts = {
     head,
