@@ -539,15 +539,21 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
     setCameraViewer((current) => ({ open: true, index: (current.index - 1 + cameraFeeds.length) % cameraFeeds.length }));
   }
 
-  function confirmCameraFinding() {
+  function selectCamera(index: number) {
+    playSound('camera');
+    setCameraViewer({ open: true, index });
+  }
+
+  function confirmCameraFinding(selectedIndex = cameraViewer.index) {
     if (!cameraViewer.open) return;
-    const feed = cameraFeeds[cameraViewer.index];
-    setCameraViewer((current) => ({ ...current, open: false }));
+    const feed = cameraFeeds[selectedIndex];
     if (!finalMode && objective.target === 'camera') {
       if (feed?.id === 'cam-03') {
+        setCameraViewer((current) => ({ ...current, open: false }));
         unlockAchievement('camera-truth');
         finishObjective();
       } else {
+        setCameraViewer((current) => ({ ...current, index: selectedIndex }));
         setMessage('Это странно, но не главное. Ищи запись с человеком у твоего стола.');
       }
     } else {
@@ -1098,6 +1104,7 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
     closeCameraViewer,
     nextCamera,
     previousCamera,
+    selectCamera,
     confirmCameraFinding,
     restart,
   };

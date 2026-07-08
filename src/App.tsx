@@ -204,6 +204,7 @@ export default function App() {
         cameraViewer={game.cameraViewer}
         onPreviousCamera={game.previousCamera}
         onNextCamera={game.nextCamera}
+        onSelectCamera={game.selectCamera}
         onCloseCamera={game.closeCameraViewer}
         onConfirmCamera={game.confirmCameraFinding}
       />
