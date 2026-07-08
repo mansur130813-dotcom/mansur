@@ -1321,6 +1321,37 @@ input:focus {
 }
 
 @media (hover: none) and (pointer: coarse) {
+  .uneasy .room,
+  .panic .room,
+  .panic .static-noise,
+  .static-noise {
+    animation: none;
+  }
+
+  .static-noise {
+    opacity: 0.1;
+    will-change: auto;
+  }
+
+  .panic .static-noise {
+    opacity: 0.16;
+  }
+
+  .uneasy .objective-toast,
+  .uneasy .panel,
+  .panic .objective-toast,
+  .panic .panel {
+    animation: none;
+  }
+
+  .night-label,
+  .objective-toast,
+  .panel,
+  .mobile-stick,
+  .mobile-action {
+    backdrop-filter: none;
+  }
+
   .mobile-controls {
     display: flex;
   }

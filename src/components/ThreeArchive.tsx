@@ -1702,8 +1702,11 @@ export function ThreeArchive({
       antialias: false,
       powerPreference: 'high-performance',
     });
-    const minPixelRatio = 1.0;
-    const maxPixelRatio = Math.min(window.devicePixelRatio || 1.2, 1.25);
+    const coarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
+    const lowPowerMode = coarsePointer || deviceMemory <= 4;
+    const minPixelRatio = lowPowerMode ? 0.62 : 0.82;
+    const maxPixelRatio = Math.min(window.devicePixelRatio || 1, lowPowerMode ? 0.9 : 1.12);
     let adaptivePixelRatio = maxPixelRatio;
     const setRenderPixelRatio = (value: number) => {
       const next = THREE.MathUtils.clamp(value, minPixelRatio, maxPixelRatio);
@@ -1717,8 +1720,8 @@ export function ThreeArchive({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.42;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.shadowMap.enabled = !lowPowerMode;
+    renderer.shadowMap.type = THREE.BasicShadowMap;
     mount.appendChild(renderer.domElement);
 
     const outside = addOutside(scene);
@@ -1844,8 +1847,8 @@ export function ThreeArchive({
 
     const lamp = new THREE.PointLight(0xd8a14b, 5.4, 13);
     lamp.position.set(-1.8, 3.2, 1.0);
-    lamp.castShadow = true;
-    lamp.shadow.mapSize.set(1024, 1024);
+    lamp.castShadow = !lowPowerMode;
+    lamp.shadow.mapSize.set(512, 512);
     lamp.shadow.bias = -0.0006;
     scene.add(lamp);
     lampRef.current = lamp;
@@ -1868,8 +1871,8 @@ export function ThreeArchive({
 
     const moonGlow = new THREE.DirectionalLight(0x9fb8c9, 1.2);
     moonGlow.position.set(-4, 7, 12);
-    moonGlow.castShadow = true;
-    moonGlow.shadow.mapSize.set(1024, 1024);
+    moonGlow.castShadow = !lowPowerMode;
+    moonGlow.shadow.mapSize.set(512, 512);
     moonGlow.shadow.camera.left = -12;
     moonGlow.shadow.camera.right = 12;
     moonGlow.shadow.camera.top = 12;
@@ -1917,7 +1920,7 @@ export function ThreeArchive({
     let perfWindowStartedAt = 0;
     let perfFrameCount = 0;
     let perfElapsed = 0;
-    const frameInterval = 1000 / 36;
+    const frameInterval = 1000 / (lowPowerMode ? 28 : 34);
     const cameraGoal = new THREE.Vector3();
     const lookGoal = new THREE.Vector3();
     const animate = (timestamp = 0) => {
