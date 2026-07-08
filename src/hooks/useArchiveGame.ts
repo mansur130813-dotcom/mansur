@@ -18,6 +18,8 @@ const step = 24;
 const reach = 72;
 const playerRadius = 10;
 const moveCooldownMs = 145;
+const shadowAttackStep = 34;
+const shadowAttackIntervalMs = 220;
 const indoorMin = 28;
 const indoorMaxX = roomSize.width - 28;
 const indoorMaxY = roomSize.height - 28;
@@ -53,6 +55,7 @@ export type GameSave = {
   clues: string[];
   exitOpen: boolean;
   ghostCabinetUnlocked: boolean;
+  orangeKeyShelfUnlocked: boolean;
   shadowPoint: Point;
   shadowAwake: boolean;
   shadowDefeated: boolean;
@@ -75,6 +78,8 @@ type ActionTarget =
   | 'flashlightBeam'
   | 'exitUnlock'
   | 'gateRun'
+  | 'orangeKeyTake'
+  | 'orangeKeyUnlock'
   | 'keyTake'
   | 'vacuumUnlock'
   | 'vacuumSuck';
@@ -162,6 +167,7 @@ function actionLabel(id: HotspotId) {
     flashlight: 'Берёшь фонарик, проверяешь батарейку и луч света',
     exit: 'Дёргаешь ручку двери и проверяешь замок',
     gate: 'Толкаешь белые ворота и выбегаешь наружу',
+    orangeKey: 'Подбираешь оранжевый ключ за стеллажом',
     ghostKey: 'Открываешь уличную полку и берёшь ключ',
     ghostVacuum: 'Открываешь стеклянный шкаф и берёшь пылесос',
   };
@@ -179,6 +185,10 @@ function stepToward(from: Point, to: Point, amount: number): Point {
 
 function moveShadowToward(current: Point, target: Point, amount: number): Point {
   return clampWalkTarget(stepToward(current, target, amount), true, current);
+}
+
+function isInFirstRoom(point: Point) {
+  return point.x < 330 && point.y < indoorMaxY;
 }
 
 function objectiveAction(objectiveIndex: number, target: HotspotId): Pick<ActionState, 'target' | 'label'> {
@@ -247,6 +257,7 @@ function makeInitialSave(): GameSave {
     clues: [],
     exitOpen: false,
     ghostCabinetUnlocked: false,
+    orangeKeyShelfUnlocked: false,
     shadowPoint: { x: 452, y: 92 },
     shadowAwake: false,
     shadowDefeated: false,
@@ -291,12 +302,14 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
   const [cameraViewer, setCameraViewer] = useState<CameraViewerState>({ open: false, index: 0 });
   const [exitOpen, setExitOpen] = useState(initial.exitOpen);
   const [ghostCabinetUnlocked, setGhostCabinetUnlocked] = useState(initial.ghostCabinetUnlocked);
+  const [orangeKeyShelfUnlocked, setOrangeKeyShelfUnlocked] = useState(initial.orangeKeyShelfUnlocked);
   const [shadowPoint, setShadowPoint] = useState<Point>(initial.shadowPoint);
   const [shadowAwake, setShadowAwake] = useState(initial.shadowAwake);
   const [shadowDefeated, setShadowDefeated] = useState(initial.shadowDefeated);
   const [jumpscare, setJumpscare] = useState(false);
   const playerRef = useRef(player);
   const shadowPointRef = useRef(shadowPoint);
+  const finalRoomOneVacuumRef = useRef(false);
   const moveRef = useRef<(dx: number, dy: number) => void>(() => {});
   const interactRef = useRef<() => void>(() => {});
   const dropInventoryRef = useRef<() => void>(() => {});
@@ -406,9 +419,8 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
     setInventory([item]);
     if (item === 'Пылесос для привидений') {
       unlockAchievement('secret-tool');
-      setShadowAwake(true);
       setShadowPoint({ x: 452, y: 92 });
-      setMessage('Пылесос щёлкает и оживает. Силуэт в коридоре наконец замечает тебя.');
+      setMessage('Пылесос щёлкает и оживает. Теперь у тебя есть шанс остановить силуэт.');
     }
     return true;
   }
@@ -470,9 +482,20 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
       flashlight: 'Фонарик лежит рядом со стопкой документов. Батарейки внутри уже теплые.',
       exit: 'Дверь не открывается. Смена должна быть закрыта.',
       gate: 'Белые ворота ведут наружу. Если откроешь их, смена закончится.',
-      ghostKey: itemIsInWorld('Ключ от стеклянной полки')
+      orangeKey: orangeKeyShelfUnlocked
+        ? 'За правым стеллажом пусто. Оранжевый ключ уже исчез в замке.'
+        : itemIsInWorld('Оранжевый ключ')
+        ? 'За правым стеллажом пусто. Оранжевый ключ уже у тебя.'
+        : 'За правым стеллажом лежит маленький оранжевый ключ.',
+      ghostKey: ghostCabinetUnlocked
+        ? 'Уличная стеклянная полка пустая. Ключ уже исчез в замке шкафа.'
+        : itemIsInWorld('Ключ от стеклянной полки')
         ? 'Уличная полка открыта. Маленький латунный ключ уже у тебя.'
-        : 'Ты открываешь уличную полку, цепляешь ключ двумя пальцами и прячешь его в ладони.',
+        : orangeKeyShelfUnlocked
+          ? 'Уличная стеклянная полка открыта. Ключ от стеклянной полки можно забрать.'
+          : inventory.includes('Оранжевый ключ')
+            ? 'Оранжевый ключ подходит к оранжевому замку на уличной стеклянной полке.'
+            : 'Ключ от стеклянной полки заперт в уличной стеклянной полке. Нужен оранжевый ключ.',
       ghostVacuum: itemIsInWorld('Пылесос для привидений')
         ? 'Стеклянный шкаф пуст. Пылесос для привидений уже у тебя.'
         : ghostCabinetUnlocked
@@ -483,7 +506,8 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
     };
 
     if (id === 'switch') setLightOn((value) => !value);
-    if (id === 'ghostKey' && !itemIsInWorld('Ключ от стеклянной полки') && !addInventory('Ключ от стеклянной полки')) return;
+    if (id === 'orangeKey' && orangeKeyShelfUnlocked) return;
+    if (id === 'orangeKey' && !itemIsInWorld('Оранжевый ключ') && !addInventory('Оранжевый ключ')) return;
     if (id === 'ghostVacuum' && ghostCabinetUnlocked && !itemIsInWorld('Пылесос для привидений')) {
       if (inventory.length > 0 && !inventory.includes('Пылесос для привидений')) {
         setMessage(`Сначала выброси "${inventory[0]}", потом возьми пылесос.`);
@@ -590,6 +614,8 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
       setCameraViewer({ open: false, index: 0 });
       setExitOpen(clean.exitOpen);
       setGhostCabinetUnlocked(clean.ghostCabinetUnlocked);
+      setOrangeKeyShelfUnlocked(clean.orangeKeyShelfUnlocked);
+      finalRoomOneVacuumRef.current = false;
       viewYawRef.current = 0.28;
       jumpscareTimerRef.current = null;
     }, settings.reducedScares ? 300 : 1400);
@@ -639,8 +665,11 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
       return;
     }
 
-    const allowedSecretTarget = finalMode && (closest.id === 'ghostKey' || closest.id === 'ghostVacuum');
-    if (!finalMode && closest.id !== objective.target) {
+    const allowedSecretTarget =
+      closest.id === 'orangeKey' ||
+      closest.id === 'ghostKey' ||
+      closest.id === 'ghostVacuum';
+    if (!finalMode && closest.id !== objective.target && !allowedSecretTarget) {
       setMessage(lockedObjectiveMessage(objective.title));
       return;
     }
@@ -654,8 +683,13 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
       !ghostCabinetUnlocked &&
       inventory.includes('Ключ от стеклянной полки') &&
       !itemIsInWorld('Пылесос для привидений');
+    const canUseOrangeKeyOnOutdoorShelf =
+      closest.id === 'ghostKey' &&
+      !orangeKeyShelfUnlocked &&
+      inventory.includes('Оранжевый ключ') &&
+      !itemIsInWorld('Ключ от стеклянной полки');
 
-    if (inventory.length > 0 && !canUseKeyOnGlassShelf) {
+    if (inventory.length > 0 && !canUseKeyOnGlassShelf && !canUseOrangeKeyOnOutdoorShelf) {
       setMessage(`Сначала выброси "${inventory[0]}" клавишей Q, потом делай задание.`);
       return;
     }
@@ -676,8 +710,49 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
       return;
     }
 
+    if (closest.id === 'orangeKey') {
+      beginAction(
+        closest.id,
+        () => inspectFreeHotspot(closest.id),
+        1800,
+        'orangeKeyTake',
+        'Ты просовываешь руку за правый стеллаж и поднимаешь оранжевый ключ.',
+      );
+      return;
+    }
+
     if (closest.id === 'ghostKey') {
-      beginAction(closest.id, () => inspectFreeHotspot(closest.id), 2100, 'keyTake', 'Ты открываешь уличную полку, снимаешь ключ с крючка и крутишь его в пальцах.');
+      if (ghostCabinetUnlocked) {
+        setMessage('Уличная стеклянная полка пустая. Ключ уже исчез в замке шкафа.');
+        return;
+      }
+
+      if (itemIsInWorld('Ключ от стеклянной полки')) {
+        setMessage('Уличная стеклянная полка пустая. Ключ уже не внутри.');
+        return;
+      }
+
+      if (!orangeKeyShelfUnlocked && inventory.includes('Оранжевый ключ')) {
+        beginAction(
+          closest.id,
+          () => {
+            setOrangeKeyShelfUnlocked(true);
+            setInventory((items) => items.filter((item) => item !== 'Оранжевый ключ'));
+            setMessage('Оранжевый ключ исчез в замке. Уличная стеклянная полка открыта.');
+          },
+          2400,
+          'orangeKeyUnlock',
+          'Ты вставляешь оранжевый ключ в оранжевый замок и открываешь уличную стеклянную полку.',
+        );
+        return;
+      }
+
+      if (!orangeKeyShelfUnlocked) {
+        setMessage('Уличная стеклянная полка заперта. Нужен оранжевый ключ из второй комнаты.');
+        return;
+      }
+
+      beginAction(closest.id, () => inspectFreeHotspot(closest.id), 2100, 'keyTake', 'Ты открываешь уличную стеклянную полку, снимаешь ключ с крючка и крутишь его в пальцах.');
       return;
     }
 
@@ -692,6 +767,7 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
           closest.id,
           () => {
             setGhostCabinetUnlocked(true);
+            setInventory((items) => items.filter((item) => item !== 'Ключ от стеклянной полки'));
             setMessage('Ключ щёлкнул в замке. Стеклянная дверца открыта, теперь можно снять пылесос.');
           },
           2600,
@@ -761,10 +837,15 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
     setCameraViewer({ open: false, index: 0 });
     setExitOpen(clean.exitOpen);
     setGhostCabinetUnlocked(clean.ghostCabinetUnlocked);
+    setOrangeKeyShelfUnlocked(clean.orangeKeyShelfUnlocked);
     setShadowPoint(clean.shadowPoint);
     setShadowAwake(clean.shadowAwake);
     setShadowDefeated(clean.shadowDefeated);
     setAiNote('');
+    finalRoomOneVacuumRef.current =
+      save.objectiveIndex === objectives.length &&
+      save.inventory.includes('Пылесос для привидений') &&
+      isInFirstRoom(save.player);
     viewYawRef.current = 0.28;
   }
 
@@ -787,12 +868,14 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
     setCameraViewer({ open: false, index: 0 });
     setExitOpen(save.exitOpen);
     setGhostCabinetUnlocked(save.ghostCabinetUnlocked);
+    setOrangeKeyShelfUnlocked(save.orangeKeyShelfUnlocked);
     setShadowPoint(save.shadowPoint);
     setShadowAwake(save.shadowAwake);
     setShadowDefeated(save.shadowDefeated);
     setAchievements(save.achievements);
     setEndingsFound(save.endingsFound);
     setAiNote(save.aiNote);
+    finalRoomOneVacuumRef.current = false;
     viewYawRef.current = 0.28;
   }
 
@@ -813,6 +896,7 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
       clues,
       exitOpen,
       ghostCabinetUnlocked,
+      orangeKeyShelfUnlocked,
       shadowPoint,
       shadowAwake,
       shadowDefeated,
@@ -828,6 +912,7 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
       endingsFound,
       exitOpen,
       ghostCabinetUnlocked,
+      orangeKeyShelfUnlocked,
       inventory,
       journal,
       lightOn,
@@ -851,7 +936,26 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
 
   useEffect(() => {
     playerRef.current = player;
-  }, [player]);
+    if (!active || shadowAwake || shadowDefeated || ending) return;
+
+    const holdingVacuum = inventory.includes('Пылесос для привидений');
+    if (!finalMode || !holdingVacuum) {
+      finalRoomOneVacuumRef.current = false;
+      return;
+    }
+
+    if (isInFirstRoom(player)) {
+      finalRoomOneVacuumRef.current = true;
+      return;
+    }
+
+    if (finalRoomOneVacuumRef.current) {
+      setShadowAwake(true);
+      setShadowPoint({ x: 452, y: 92 });
+      shadowPointRef.current = { x: 452, y: 92 };
+      setMessage('Ты выходишь из первой комнаты с пылесосом. Силуэт бросается за тобой.');
+    }
+  }, [active, ending, finalMode, inventory, player, shadowAwake, shadowDefeated]);
 
   useEffect(() => {
     shadowPointRef.current = shadowPoint;
@@ -907,10 +1011,10 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
         restartAfterShadowAttack();
         return;
       }
-      const next = moveShadowToward(current, target, 24);
+      const next = moveShadowToward(current, target, shadowAttackStep);
       shadowPointRef.current = next;
       setShadowPoint(next);
-    }, 300);
+    }, shadowAttackIntervalMs);
 
     return () => window.clearInterval(attack);
   }, [action?.target, active, ending, shadowAwake, shadowDefeated, settings.reducedScares]);
@@ -966,6 +1070,7 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
     records,
     inventory,
     ghostCabinetUnlocked,
+    orangeKeyShelfUnlocked,
     droppedItems,
     shadowPoint,
     shadowVisible,

@@ -15,6 +15,8 @@ type ActionTarget =
   | 'flashlightBeam'
   | 'exitUnlock'
   | 'gateRun'
+  | 'orangeKeyTake'
+  | 'orangeKeyUnlock'
   | 'keyTake'
   | 'vacuumUnlock'
   | 'vacuumSuck';
@@ -26,6 +28,7 @@ type Props = {
   coffeeDrunk: boolean;
   inventory: string[];
   ghostCabinetUnlocked: boolean;
+  orangeKeyShelfUnlocked: boolean;
   droppedItems: DroppedItem[];
   shadowPoint: Point;
   shadowVisible: boolean;
@@ -44,6 +47,7 @@ export function GameBoard({
   coffeeDrunk,
   inventory,
   ghostCabinetUnlocked,
+  orangeKeyShelfUnlocked,
   droppedItems,
   shadowPoint,
   shadowVisible,
@@ -66,6 +70,7 @@ export function GameBoard({
           coffeeDrunk={coffeeDrunk}
           inventory={inventory}
           ghostCabinetUnlocked={ghostCabinetUnlocked}
+          orangeKeyShelfUnlocked={orangeKeyShelfUnlocked}
           droppedItems={droppedItems}
           shadowPoint={shadowPoint}
           shadowVisible={shadowVisible}

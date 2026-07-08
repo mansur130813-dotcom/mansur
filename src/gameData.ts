@@ -20,6 +20,7 @@ export type HotspotId =
   | 'flashlight'
   | 'exit'
   | 'gate'
+  | 'orangeKey'
   | 'ghostKey'
   | 'ghostVacuum';
 
@@ -104,6 +105,7 @@ export const hotspots: Record<HotspotId, Point & { label: string }> = {
   flashlight: { x: 370, y: 190, label: 'Фонарик' },
   exit: { x: 450, y: 502, label: 'Выход' },
   gate: { x: 450, y: 1165, label: 'Белые ворота' },
+  orangeKey: { x: 112, y: 54, label: 'Оранжевый ключ' },
   ghostKey: { x: 530, y: 790, label: 'Ключ от стеклянной полки' },
   ghostVacuum: { x: 70, y: 270, label: 'Пылесос для привидений' },
 };

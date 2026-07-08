@@ -183,6 +183,7 @@ export default function App() {
         coffeeDrunk={game.coffeeDrunk}
         inventory={game.inventory}
         ghostCabinetUnlocked={game.ghostCabinetUnlocked}
+        orangeKeyShelfUnlocked={game.orangeKeyShelfUnlocked}
         droppedItems={game.droppedItems}
         shadowPoint={game.shadowPoint}
         shadowVisible={game.shadowVisible}

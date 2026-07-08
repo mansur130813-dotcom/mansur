@@ -16,6 +16,8 @@ type ActionTarget =
   | 'flashlightBeam'
   | 'exitUnlock'
   | 'gateRun'
+  | 'orangeKeyTake'
+  | 'orangeKeyUnlock'
   | 'keyTake'
   | 'vacuumUnlock'
   | 'vacuumSuck';
@@ -27,6 +29,7 @@ type Props = {
   coffeeDrunk: boolean;
   inventory: string[];
   ghostCabinetUnlocked: boolean;
+  orangeKeyShelfUnlocked: boolean;
   droppedItems: DroppedItem[];
   shadowPoint: Point;
   shadowVisible: boolean;
@@ -356,6 +359,23 @@ function actionPose(target: ActionTarget | null, motion: number): Pose {
         headPitch: 0.35,
         headYaw: -0.32,
         groupRoll: 0.04,
+      };
+    case 'orangeKeyTake':
+      return {
+        leftUpperArm: -0.38 + motion * 0.1,
+        rightUpperArm: -2.18 + Math.abs(motion) * 0.38,
+        leftLowerArm: -0.22,
+        rightLowerArm: -0.74 - Math.max(0, motion) * 0.42,
+        leftUpperLeg: 0.26,
+        rightUpperLeg: -0.44,
+        leftLowerLeg: -0.18,
+        rightLowerLeg: -0.42,
+        bodyLean: 0.48,
+        bodyTwist: -0.78,
+        headPitch: 0.5,
+        headYaw: -0.7,
+        groupRoll: 0.12,
+        lift: -0.04 + Math.abs(motion) * 0.025,
       };
     case 'vacuumUnlock':
       return {
@@ -762,19 +782,19 @@ function addRoomDoor(scene: THREE.Scene, x: number, opensLeft: boolean) {
   door.castShadow = true;
   doorPivot.add(door);
 
-  const inset = new THREE.Mesh(
-    new THREE.BoxGeometry(0.028, 1.72, 1.46),
-    new THREE.MeshStandardMaterial({ color: 0x35231a, roughness: 0.86 }),
-  );
-  inset.position.set(opensLeft ? 0.06 : -0.06, 1.24, 1.0);
-  doorPivot.add(inset);
+  const insetMaterial = new THREE.MeshStandardMaterial({ color: 0x35231a, roughness: 0.86 });
+  const handleMaterial = new THREE.MeshStandardMaterial({ color: 0xd8a14b, roughness: 0.38, metalness: 0.18 });
+  const faceSide = opensLeft ? 1 : -1;
 
-  const handle = new THREE.Mesh(
-    new THREE.SphereGeometry(0.07, 16, 12),
-    new THREE.MeshStandardMaterial({ color: 0xd8a14b, roughness: 0.38, metalness: 0.18 }),
-  );
-  handle.position.set(opensLeft ? 0.09 : -0.09, 1.08, 1.58);
-  doorPivot.add(handle);
+  [faceSide, -faceSide].forEach((side) => {
+    const inset = new THREE.Mesh(new THREE.BoxGeometry(0.028, 1.72, 1.46), insetMaterial);
+    inset.position.set(side * 0.06, 1.24, 1.0);
+    doorPivot.add(inset);
+
+    const handle = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), handleMaterial);
+    handle.position.set(side * 0.09, 1.08, 1.58);
+    doorPivot.add(handle);
+  });
 
   scene.add(doorPivot);
   return doorPivot;
@@ -862,24 +882,51 @@ function addWhiteGate(scene: THREE.Scene) {
 }
 
 function addOutsideKeyShelf(scene: THREE.Scene) {
-  box(scene, [0.9, 0.08, 0.45], [2.05, 0.82, 13.0], 0x6a4b32);
-  box(scene, [0.08, 0.72, 0.5], [1.58, 0.48, 13.0], 0x3a2418);
-  box(scene, [0.08, 0.72, 0.5], [2.52, 0.48, 13.0], 0x3a2418);
-  box(scene, [0.78, 0.5, 0.05], [2.05, 0.62, 13.22], 0x4a3324);
+  const shelf = new THREE.Group();
+  shelf.position.set(2.05, 0.02, 13.0);
+  scene.add(shelf);
 
-  const keyGroup = new THREE.Group();
-  keyGroup.position.set(2.02, 0.93, 12.92);
-  scene.add(keyGroup);
+  box(shelf as unknown as THREE.Scene, [1.05, 0.1, 0.78], [0, 0.05, 0], 0x6a4b32);
+  box(shelf as unknown as THREE.Scene, [0.1, 1.55, 0.82], [-0.58, 0.8, 0], 0x3a2418);
+  box(shelf as unknown as THREE.Scene, [0.1, 1.55, 0.82], [0.58, 0.8, 0], 0x3a2418);
+  box(shelf as unknown as THREE.Scene, [1.14, 0.1, 0.84], [0, 1.58, 0], 0x3a2418);
+  box(shelf as unknown as THREE.Scene, [0.92, 0.08, 0.12], [0, 0.78, -0.36], 0x5a3c29);
+  box(shelf as unknown as THREE.Scene, [0.92, 0.08, 0.12], [0, 1.2, -0.36], 0x5a3c29);
 
-  const key = new THREE.Mesh(
-    new THREE.TorusGeometry(0.1, 0.025, 10, 20),
-    new THREE.MeshStandardMaterial({ color: 0xd8a14b, roughness: 0.35, metalness: 0.35 }),
+  const keyGroup = createDroppedItemModel('Ключ от стеклянной полки');
+  keyGroup.position.set(-0.05, 1.03, -0.03);
+  keyGroup.rotation.y = -0.4;
+  shelf.add(keyGroup);
+
+  const doorPivot = new THREE.Group();
+  doorPivot.position.set(-0.54, 0.08, -0.43);
+  shelf.add(doorPivot);
+
+  const glassDoor = new THREE.Mesh(
+    new THREE.BoxGeometry(1.08, 1.5, 0.055),
+    new THREE.MeshStandardMaterial({
+      color: 0x9fd4ff,
+      roughness: 0.14,
+      transparent: true,
+      opacity: 0.42,
+      depthWrite: false,
+    }),
   );
-  key.rotation.x = Math.PI / 2;
-  keyGroup.add(key);
-  box(keyGroup as unknown as THREE.Scene, [0.28, 0.035, 0.055], [0.18, 0, 0], 0xd8a14b);
-  addLabel(scene, 'KEY', [2.05, 1.45, 12.9]);
-  return keyGroup;
+  glassDoor.position.set(0.54, 0.76, 0);
+  doorPivot.add(glassDoor);
+
+  const lockMaterial = new THREE.MeshStandardMaterial({ color: 0xff8a1d, roughness: 0.35, metalness: 0.35 });
+  const lockBody = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.2, 0.09), lockMaterial);
+  lockBody.position.set(1.03, 0.74, -0.055);
+  doorPivot.add(lockBody);
+
+  const lockShackle = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.018, 8, 18, Math.PI), lockMaterial);
+  lockShackle.position.set(1.03, 0.9, -0.055);
+  lockShackle.rotation.z = Math.PI;
+  doorPivot.add(lockShackle);
+
+  addLabel(scene, 'OUTDOOR GLASS KEY', [2.05, 1.95, 12.9]);
+  return { key: keyGroup, door: doorPivot };
 }
 
 function addGhostVacuumCabinet(scene: THREE.Scene) {
@@ -970,14 +1017,15 @@ function addGhostVacuumCabinet(scene: THREE.Scene) {
 function createDroppedItemModel(item: string) {
   const group = new THREE.Group();
 
-  if (item === 'Ключ от стеклянной полки') {
+  if (item === 'Ключ от стеклянной полки' || item === 'Оранжевый ключ') {
+    const keyColor = item === 'Оранжевый ключ' ? 0xff8a1d : 0xd8a14b;
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(0.12, 0.025, 10, 22),
-      new THREE.MeshStandardMaterial({ color: 0xd8a14b, roughness: 0.35, metalness: 0.35 }),
+      new THREE.MeshStandardMaterial({ color: keyColor, roughness: 0.35, metalness: 0.35 }),
     );
     ring.rotation.x = Math.PI / 2;
     group.add(ring);
-    box(group as unknown as THREE.Scene, [0.32, 0.035, 0.055], [0.2, 0, 0], 0xd8a14b);
+    box(group as unknown as THREE.Scene, [0.32, 0.035, 0.055], [0.2, 0, 0], keyColor);
   } else if (item === 'Пылесос для привидений') {
     const body = new THREE.Mesh(
       new THREE.CylinderGeometry(0.16, 0.22, 0.52, 16),
@@ -1065,7 +1113,7 @@ function addOutside(scene: THREE.Scene) {
   );
   backTreeLine.position.set(0, 1.2, 28.4);
   scene.add(backTreeLine);
-  return { key: addOutsideKeyShelf(scene), gate: addWhiteGate(scene) };
+  return { keyShelf: addOutsideKeyShelf(scene), gate: addWhiteGate(scene) };
 }
 
 function capsule(
@@ -1134,6 +1182,57 @@ function createPerson(dark = false) {
   );
   hair.position.set(0, 1.43, -0.01);
   group.add(hair);
+
+  if (dark) {
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const pupilMaterial = new THREE.MeshBasicMaterial({ color: 0x7d0008 });
+    const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0xb80013 });
+    const toothMaterial = new THREE.MeshBasicMaterial({ color: 0xfff1d5 });
+
+    const eyeShape = new THREE.Shape();
+    eyeShape.moveTo(-0.058, 0);
+    eyeShape.quadraticCurveTo(-0.014, 0.034, 0.06, 0.012);
+    eyeShape.quadraticCurveTo(0.014, -0.018, -0.058, 0);
+
+    [-1, 1].forEach((side) => {
+      const eye = new THREE.Mesh(new THREE.ShapeGeometry(eyeShape), eyeMaterial);
+      eye.position.set(side * 0.072, 0.046, 0.184);
+      eye.rotation.z = side * -0.18;
+      eye.scale.x = side;
+      head.add(eye);
+
+      const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.013, 16), pupilMaterial);
+      pupil.position.set(side * 0.073, 0.044, 0.187);
+      pupil.scale.set(0.75, 1.25, 1);
+      head.add(pupil);
+    });
+
+    const grinShape = new THREE.Shape();
+    grinShape.moveTo(-0.118, -0.072);
+    grinShape.quadraticCurveTo(-0.052, -0.12, 0.018, -0.112);
+    grinShape.quadraticCurveTo(0.082, -0.104, 0.124, -0.066);
+    grinShape.quadraticCurveTo(0.058, -0.084, -0.002, -0.084);
+    grinShape.quadraticCurveTo(-0.064, -0.084, -0.118, -0.072);
+
+    const grin = new THREE.Mesh(new THREE.ShapeGeometry(grinShape), mouthMaterial);
+    grin.position.set(0, 0, 0.181);
+    grin.rotation.z = 0.08;
+    head.add(grin);
+
+    const toothShape = new THREE.Shape();
+    toothShape.moveTo(-0.012, 0);
+    toothShape.lineTo(0.012, 0);
+    toothShape.lineTo(0, -0.042);
+    toothShape.closePath();
+
+    [-0.052, 0.058].forEach((x, index) => {
+      const tooth = new THREE.Mesh(new THREE.ShapeGeometry(toothShape), toothMaterial);
+      tooth.position.set(x, -0.078, 0.184);
+      tooth.scale.set(1.25, 1.6, 1);
+      tooth.rotation.z = 0.05 + (index === 0 ? -0.08 : 0.08);
+      head.add(tooth);
+    });
+  }
 
   group.add(capsule(0.06, 0.08, skin, [0, 1.13, 0]));
 
@@ -1205,7 +1304,7 @@ function createPerson(dark = false) {
 function createHeldItemModel(item: string) {
   const group = createDroppedItemModel(item);
 
-  if (item === 'Ключ от стеклянной полки') {
+  if (item === 'Ключ от стеклянной полки' || item === 'Оранжевый ключ') {
     group.scale.setScalar(0.72);
     group.position.set(0.02, 0.02, -0.05);
     group.rotation.set(0.25, -0.4, 0.9);
@@ -1386,7 +1485,16 @@ function updateFirstPersonHands(group: THREE.Group, target: ActionTarget | null,
       parts.rightSleeve.rotation.set(1.72, -0.1, 0.24 + beat * 0.28);
       parts.rightHand.rotation.set(0.18, -0.3, 0.58 + beat * 0.35);
       break;
+    case 'orangeKeyTake':
+      group.position.set(-0.04 + beat * 0.018, -0.03 - Math.abs(motion) * 0.02, 0);
+      parts.leftHand.position.set(-0.26, -0.47, -0.78);
+      parts.rightHand.position.set(0.38 + beat * 0.05, -0.16 + motion * 0.05, -1.05);
+      parts.leftSleeve.rotation.set(1.42, 0.18, -0.2);
+      parts.rightSleeve.rotation.set(2.08, -0.62, 0.72 + motion * 0.32);
+      parts.rightHand.rotation.set(0.5, -0.72, 0.95 + beat * 0.4);
+      break;
     case 'vacuumUnlock':
+    case 'orangeKeyUnlock':
     case 'ghostKey':
       parts.leftHand.position.set(-0.22, -0.3, -0.86);
       parts.rightHand.position.set(0.24 + Math.sin(motion * 3) * 0.06, -0.24, -0.88);
@@ -1486,6 +1594,7 @@ export function ThreeArchive({
   coffeeDrunk,
   inventory,
   ghostCabinetUnlocked,
+  orangeKeyShelfUnlocked,
   droppedItems,
   shadowPoint,
   shadowVisible,
@@ -1511,6 +1620,7 @@ export function ThreeArchive({
   const exitDoorRef = useRef<THREE.Group | null>(null);
   const roomDoorsRef = useRef<THREE.Group[]>([]);
   const ghostCabinetDoorRef = useRef<THREE.Group | null>(null);
+  const orangeKeyShelfDoorRef = useRef<THREE.Group | null>(null);
   const ghostVacuumRef = useRef<THREE.Group | null>(null);
   const sourceItemRefs = useRef<Record<string, THREE.Object3D | null>>({});
   const interactionObjectRefs = useRef<Record<string, THREE.Object3D | null>>({});
@@ -1526,6 +1636,7 @@ export function ThreeArchive({
   const hasGhostKeyRef = useRef(inventory.includes('Ключ от стеклянной полки'));
   const hasGhostVacuumRef = useRef(inventory.includes('Пылесос для привидений'));
   const ghostCabinetUnlockedRef = useRef(ghostCabinetUnlocked);
+  const orangeKeyShelfUnlockedRef = useRef(orangeKeyShelfUnlocked);
   const exitDoorOpenedRef = useRef(false);
   const cameraYawRef = useRef(0.28);
   const cameraPitchRef = useRef(0);
@@ -1611,7 +1722,8 @@ export function ThreeArchive({
     mount.appendChild(renderer.domElement);
 
     const outside = addOutside(scene);
-    sourceItemRefs.current['Ключ от стеклянной полки'] = outside.key;
+    sourceItemRefs.current['Ключ от стеклянной полки'] = outside.keyShelf.key;
+    orangeKeyShelfDoorRef.current = outside.keyShelf.door;
     interactionObjectRefs.current.gate = outside.gate;
 
     const droppedLayer = new THREE.Group();
@@ -1689,6 +1801,14 @@ export function ThreeArchive({
 
     sourceItemRefs.current['Личное дело №417'] = addCase417(scene);
     interactionObjectRefs.current.case417 = sourceItemRefs.current['Личное дело №417'];
+    sourceItemRefs.current['Оранжевый ключ'] = createDroppedItemModel('Оранжевый ключ');
+    const orangeKey = sourceItemRefs.current['Оранжевый ключ']!;
+    orangeKey.position.set(-8.46, 0.7, -5.62);
+    orangeKey.scale.setScalar(0.56);
+    orangeKey.rotation.set(Math.PI / 2, 0.2, -0.48);
+    orangeKey.userData.basePosition = orangeKey.position.clone();
+    orangeKey.userData.baseRotation = orangeKey.rotation.clone();
+    scene.add(orangeKey);
     interactionObjectRefs.current.boxes = addBoxes(scene);
     exitDoorRef.current = addSwitchAndExit(scene);
     interactionObjectRefs.current.switchLever = exitDoorRef.current.userData.switchLever as THREE.Object3D;
@@ -1902,6 +2022,30 @@ export function ThreeArchive({
         flashlightObject.rotation.y = THREE.MathUtils.lerp(flashlightObject.rotation.y, usingFlashlight ? Math.sin(frame * 7) * 0.55 : 0, 0.18);
       }
 
+      const orangeKeyObject = sourceItemRefs.current['Оранжевый ключ'];
+      if (orangeKeyObject) {
+        const takingOrangeKey = activeTarget === 'orangeKeyTake';
+        const base = orangeKeyObject.userData.basePosition as THREE.Vector3 | undefined;
+        const baseRotation = orangeKeyObject.userData.baseRotation as THREE.Euler | undefined;
+        if (base && baseRotation) {
+          orangeKeyObject.position.x = THREE.MathUtils.lerp(
+            orangeKeyObject.position.x,
+            base.x + (takingOrangeKey ? 0.24 + actionBeat * 0.04 : 0),
+            0.18,
+          );
+          orangeKeyObject.position.y = THREE.MathUtils.lerp(
+            orangeKeyObject.position.y,
+            base.y + (takingOrangeKey ? 0.16 + actionBeat * 0.08 : 0),
+            0.18,
+          );
+          orangeKeyObject.rotation.z = THREE.MathUtils.lerp(
+            orangeKeyObject.rotation.z,
+            baseRotation.z + (takingOrangeKey ? Math.sin(frame * 12) * 0.45 : 0),
+            0.22,
+          );
+        }
+      }
+
       const switchLever = interactionObjectRefs.current.switchLever;
       if (switchLever) {
         const flipping = activeTarget === 'switch';
@@ -1953,6 +2097,15 @@ export function ThreeArchive({
           ghostCabinetDoorRef.current.rotation.y,
           targetRotation,
           0.1,
+        );
+      }
+      if (orangeKeyShelfDoorRef.current) {
+        const unlockingOutdoorShelf = actionActiveRef.current && actionTargetRef.current === 'orangeKeyUnlock';
+        const targetRotation = unlockingOutdoorShelf || orangeKeyShelfUnlockedRef.current ? -1.18 : 0;
+        orangeKeyShelfDoorRef.current.rotation.y = THREE.MathUtils.lerp(
+          orangeKeyShelfDoorRef.current.rotation.y,
+          targetRotation,
+          0.12,
         );
       }
       if (ghostVacuumRef.current) {
@@ -2207,13 +2360,20 @@ export function ThreeArchive({
 
     const movedItems = new Set([...inventory, ...droppedItems.map((item) => item.item)]);
     Object.entries(sourceItemRefs.current).forEach(([item, object]) => {
-      if (object) object.visible = !movedItems.has(item);
+      if (!object) return;
+      const consumedOrangeKey = item === 'Оранжевый ключ' && orangeKeyShelfUnlocked;
+      const consumedGlassKey = item === 'Ключ от стеклянной полки' && ghostCabinetUnlocked;
+      object.visible = !movedItems.has(item) && !consumedOrangeKey && !consumedGlassKey;
     });
-  }, [droppedItems, inventory]);
+  }, [droppedItems, ghostCabinetUnlocked, inventory, orangeKeyShelfUnlocked]);
 
   useEffect(() => {
     ghostCabinetUnlockedRef.current = ghostCabinetUnlocked;
   }, [ghostCabinetUnlocked]);
+
+  useEffect(() => {
+    orangeKeyShelfUnlockedRef.current = orangeKeyShelfUnlocked;
+  }, [orangeKeyShelfUnlocked]);
 
   useEffect(() => {
     if (lampRef.current) {
