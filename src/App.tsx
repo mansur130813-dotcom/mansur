@@ -4,6 +4,7 @@ import { EndingScreen } from './components/EndingScreen';
 import { GameBoard } from './components/GameBoard';
 import { Hud } from './components/Hud';
 import { MenuScreen } from './components/MenuScreen';
+import { MobileControls } from './components/MobileControls';
 import { useArchiveGame, type GameSave, type GameSettings } from './hooks/useArchiveGame';
 import { useGameSound } from './hooks/useGameSound';
 import { supabase } from './lib/supabase';
@@ -206,6 +207,8 @@ export default function App() {
         onCloseCamera={game.closeCameraViewer}
         onConfirmCamera={game.confirmCameraFinding}
       />
+
+      <MobileControls onMove={game.move} onInteract={game.interact} onDrop={game.dropInventory} />
 
       {game.jumpscare && (
         <div className="jumpscare" aria-live="assertive">

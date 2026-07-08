@@ -1657,7 +1657,7 @@ export function ThreeArchive({
       draggingRef.current = true;
       pointerRef.current = { x: event.clientX, y: event.clientY };
       mount.setPointerCapture(event.pointerId);
-      if (document.pointerLockElement !== mount) mount.requestPointerLock();
+      if (event.pointerType === 'mouse' && document.pointerLockElement !== mount) mount.requestPointerLock();
     };
 
     const onPointerMove = (event: PointerEvent) => {
@@ -1803,9 +1803,9 @@ export function ThreeArchive({
     interactionObjectRefs.current.case417 = sourceItemRefs.current['Личное дело №417'];
     sourceItemRefs.current['Оранжевый ключ'] = createDroppedItemModel('Оранжевый ключ');
     const orangeKey = sourceItemRefs.current['Оранжевый ключ']!;
-    orangeKey.position.set(-8.46, 0.7, -5.62);
+    orangeKey.position.set(-8.46, 0.08, -5.62);
     orangeKey.scale.setScalar(0.56);
-    orangeKey.rotation.set(Math.PI / 2, 0.2, -0.48);
+    orangeKey.rotation.set(0.04, 0.2, -0.48);
     orangeKey.userData.basePosition = orangeKey.position.clone();
     orangeKey.userData.baseRotation = orangeKey.rotation.clone();
     scene.add(orangeKey);
