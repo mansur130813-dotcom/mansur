@@ -412,7 +412,7 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
   function addInventory(item: string) {
     if (inventory.includes(item)) return true;
     if (inventory.length > 0) {
-      if (item === hotspots.orangeKey.label) {
+      if (item === hotspots.orangeKey.label || item === hotspots.ghostKey.label) {
         setDroppedItems((items) => [droppedItem(inventory[0], player), ...items]);
         setInventory([item]);
         return true;
@@ -760,7 +760,7 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
         return;
       }
 
-      beginAction(closest.id, () => inspectFreeHotspot(closest.id), 2100, 'keyTake', 'Ты открываешь уличную стеклянную полку, снимаешь ключ с крючка и крутишь его в пальцах.');
+      beginAction(closest.id, () => addInventory(hotspots.ghostKey.label), 2100, 'keyTake', 'Ты открываешь уличную стеклянную полку, снимаешь ключ с крючка и крутишь его в пальцах.');
       return;
     }
 
