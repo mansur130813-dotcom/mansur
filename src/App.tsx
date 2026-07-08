@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { EndingScreen } from './components/EndingScreen';
 import { GameBoard } from './components/GameBoard';
@@ -48,6 +48,47 @@ export default function App() {
     initialSave,
     settings: defaultSettings,
   });
+  const latestSaveRef = useRef(game.save);
+  latestSaveRef.current = game.save;
+  const googleSaveKey = useMemo(
+    () =>
+      JSON.stringify({
+        objectiveIndex: game.save.objectiveIndex,
+        lightOn: game.save.lightOn,
+        records: game.save.records,
+        inventory: game.save.inventory,
+        droppedItems: game.save.droppedItems,
+        message: game.save.message,
+        journal: game.save.journal,
+        clues: game.save.clues,
+        exitOpen: game.save.exitOpen,
+        ghostCabinetUnlocked: game.save.ghostCabinetUnlocked,
+        orangeKeyShelfUnlocked: game.save.orangeKeyShelfUnlocked,
+        shadowAwake: game.save.shadowAwake,
+        shadowDefeated: game.save.shadowDefeated,
+        achievements: game.save.achievements,
+        endingsFound: game.save.endingsFound,
+        aiNote: game.save.aiNote,
+      }),
+    [
+      game.save.achievements,
+      game.save.aiNote,
+      game.save.clues,
+      game.save.droppedItems,
+      game.save.endingsFound,
+      game.save.exitOpen,
+      game.save.ghostCabinetUnlocked,
+      game.save.inventory,
+      game.save.journal,
+      game.save.lightOn,
+      game.save.message,
+      game.save.objectiveIndex,
+      game.save.orangeKeyShelfUnlocked,
+      game.save.records,
+      game.save.shadowAwake,
+      game.save.shadowDefeated,
+    ],
+  );
 
   const loadGoogleSave = useCallback(async (currentUser: User) => {
     const { data, error } = await supabase
@@ -143,19 +184,18 @@ export default function App() {
   useEffect(() => {
     if (!started || !googleSaveEnabled || !user) return undefined;
 
-    setSaveStatus('Сохраняю прогресс...');
     const timer = window.setTimeout(async () => {
       const { error } = await supabase.from('game_saves').upsert({
         user_id: user.id,
-        save_data: game.save,
+        save_data: latestSaveRef.current,
         updated_at: new Date().toISOString(),
       });
 
       setSaveStatus(error ? `Ошибка сохранения: ${error.message}` : 'Прогресс сохранён в Google-аккаунте.');
-    }, 700);
+    }, 4500);
 
     return () => window.clearTimeout(timer);
-  }, [game.save, googleSaveEnabled, started, user]);
+  }, [googleSaveEnabled, googleSaveKey, started, user]);
 
   if (!started) {
     return (
