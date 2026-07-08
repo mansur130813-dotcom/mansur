@@ -442,6 +442,16 @@ function itemMatches(item: string | undefined, patterns: string[]) {
   return patterns.some((pattern) => item.includes(pattern));
 }
 
+function smoothTexture(texture: THREE.Texture, anisotropy = 1) {
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = true;
+  texture.anisotropy = Math.max(1, anisotropy);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function createTargetGlow() {
   const group = new THREE.Group();
   const ring = new THREE.Mesh(
@@ -484,57 +494,174 @@ function box(
   return mesh;
 }
 
-function transparentBox(
-  scene: THREE.Scene,
-  size: [number, number, number],
-  position: [number, number, number],
-  color: number,
-  opacity: number,
-) {
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(...size),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false }),
-  );
-  mesh.position.set(...position);
-  scene.add(mesh);
+function addShine(mesh: THREE.Mesh) {
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   return mesh;
 }
 
-function createPixelDust() {
-  const count = 70;
-  const positions = new Float32Array(count * 3);
-  const colors = new Float32Array(count * 3);
-  const color = new THREE.Color();
-
-  for (let i = 0; i < count; i += 1) {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 1.2 + Math.random() * 9.2;
-    positions[i * 3] = Math.cos(angle) * radius;
-    positions[i * 3 + 1] = 0.5 + Math.random() * 2.9;
-    positions[i * 3 + 2] = Math.sin(angle) * (radius * 0.62);
-
-    color.set(i % 4 === 0 ? 0xf1ddb0 : 0x8f7c5a);
-    colors[i * 3] = color.r;
-    colors[i * 3 + 1] = color.g;
-    colors[i * 3 + 2] = color.b;
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-  const material = new THREE.PointsMaterial({
-    size: 0.035,
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.18,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
+function createKeyModel(item: string) {
+  const group = new THREE.Group();
+  const keyColor = item === 'Оранжевый ключ' ? 0xff8a1d : 0xd8a14b;
+  const metal = new THREE.MeshStandardMaterial({
+    color: keyColor,
+    roughness: 0.24,
+    metalness: 0.62,
+    emissive: item === 'Оранжевый ключ' ? 0x331000 : 0x1d1304,
+    emissiveIntensity: item === 'Оранжевый ключ' ? 0.16 : 0.08,
   });
 
-  const dust = new THREE.Points(geometry, material);
-  dust.userData.positions = positions;
-  return dust;
+  const ring = addShine(new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.021, 18, 48), metal));
+  ring.rotation.x = Math.PI / 2;
+  group.add(ring);
+
+  const stem = addShine(new THREE.Mesh(new THREE.CapsuleGeometry(0.026, 0.31, 8, 18), metal));
+  stem.position.set(0.19, 0, 0);
+  stem.rotation.z = Math.PI / 2;
+  group.add(stem);
+
+  const toothA = addShine(new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.028, 0.055), metal));
+  toothA.position.set(0.37, -0.03, 0);
+  group.add(toothA);
+
+  const toothB = addShine(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.028, 0.055), metal));
+  toothB.position.set(0.32, 0.04, 0);
+  group.add(toothB);
+
+  const glint = addShine(
+    new THREE.Mesh(
+      new THREE.SphereGeometry(0.018, 16, 10),
+      new THREE.MeshBasicMaterial({ color: 0xfff0c6, transparent: true, opacity: 0.82 }),
+    ),
+  );
+  glint.position.set(-0.04, 0.045, 0.025);
+  group.add(glint);
+  return group;
+}
+
+function createFlashlightItemModel() {
+  const group = new THREE.Group();
+  const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x191817, roughness: 0.34, metalness: 0.42 });
+  const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xd8a14b, roughness: 0.28, metalness: 0.46 });
+  const glassMaterial = new THREE.MeshStandardMaterial({
+    color: 0xf8f0c8,
+    roughness: 0.12,
+    metalness: 0.02,
+    emissive: 0xf1ddb0,
+    emissiveIntensity: 0.26,
+    transparent: true,
+    opacity: 0.82,
+  });
+
+  const body = addShine(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.068, 0.48, 36), bodyMaterial));
+  body.rotation.z = Math.PI / 2;
+  group.add(body);
+
+  const gripMaterial = new THREE.MeshStandardMaterial({ color: 0x2d2a27, roughness: 0.58, metalness: 0.22 });
+  [-0.09, -0.02, 0.05, 0.12].forEach((x) => {
+    const rib = addShine(new THREE.Mesh(new THREE.TorusGeometry(0.066, 0.006, 8, 28), gripMaterial));
+    rib.position.set(x, 0, 0);
+    rib.rotation.y = Math.PI / 2;
+    group.add(rib);
+  });
+
+  const head = addShine(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.072, 0.17, 40), brassMaterial));
+  head.position.set(-0.3, 0, 0);
+  head.rotation.z = Math.PI / 2;
+  group.add(head);
+
+  const lens = addShine(new THREE.Mesh(new THREE.CircleGeometry(0.084, 40), glassMaterial));
+  lens.position.set(-0.389, 0, 0);
+  lens.rotation.y = -Math.PI / 2;
+  group.add(lens);
+
+  const switchButton = addShine(new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.024, 0.036), brassMaterial));
+  switchButton.position.set(0.04, 0.065, 0);
+  group.add(switchButton);
+  return group;
+}
+
+function createVacuumItemModel() {
+  const group = new THREE.Group();
+  const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x2c5f78, roughness: 0.42, metalness: 0.2 });
+  const brassMaterial = new THREE.MeshStandardMaterial({ color: 0xd8a14b, roughness: 0.32, metalness: 0.38 });
+  const glassMaterial = new THREE.MeshStandardMaterial({
+    color: 0x8fd7ff,
+    roughness: 0.12,
+    metalness: 0.02,
+    transparent: true,
+    opacity: 0.7,
+    emissive: 0x1b6f8e,
+    emissiveIntensity: 0.16,
+  });
+
+  const body = addShine(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.23, 0.54, 36), bodyMaterial));
+  body.rotation.z = Math.PI / 2;
+  group.add(body);
+
+  const tank = addShine(new THREE.Mesh(new THREE.SphereGeometry(0.115, 28, 18), glassMaterial));
+  tank.position.set(0.05, 0.02, 0.16);
+  group.add(tank);
+
+  const nozzle = addShine(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.068, 0.48, 28), brassMaterial));
+  nozzle.position.set(-0.02, 0, -0.39);
+  nozzle.rotation.x = Math.PI / 2;
+  group.add(nozzle);
+
+  const mouth = addShine(new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.011, 10, 34), brassMaterial));
+  mouth.position.set(-0.02, 0, -0.64);
+  mouth.rotation.x = Math.PI / 2;
+  group.add(mouth);
+
+  const handle = addShine(new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 14, 40, Math.PI), bodyMaterial));
+  handle.position.set(0.03, 0.2, 0.03);
+  handle.rotation.z = Math.PI;
+  group.add(handle);
+  return group;
+}
+
+function createFolderItemModel(color = 0xd8c9a8, stripeColor = 0xa51f24) {
+  const group = new THREE.Group();
+  const coverMaterial = new THREE.MeshStandardMaterial({ color, roughness: 0.72 });
+  const stripeMaterial = new THREE.MeshStandardMaterial({ color: stripeColor, roughness: 0.58 });
+
+  const cover = addShine(new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.034, 0.31), coverMaterial));
+  cover.rotation.z = -0.04;
+  group.add(cover);
+
+  const tab = addShine(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.038, 0.052), coverMaterial));
+  tab.position.set(-0.13, 0.02, -0.18);
+  group.add(tab);
+
+  const spine = addShine(new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.046, 0.33), stripeMaterial));
+  spine.position.set(-0.23, 0.01, 0);
+  group.add(spine);
+
+  const paperEdge = addShine(new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.012, 0.25), new THREE.MeshStandardMaterial({ color: 0xf3e6c6, roughness: 0.8 })));
+  paperEdge.position.set(0.02, -0.026, 0.012);
+  group.add(paperEdge);
+  return group;
+}
+
+function addShelfFolders(scene: THREE.Scene) {
+  for (let shelf = 0; shelf < 2; shelf += 1) {
+    const baseX = shelf === 0 ? -8.15 : 6.05;
+    for (let row = 0; row < 4; row += 1) {
+      for (let file = 0; file < 7; file += 1) {
+        const height = 0.34 + ((row + file) % 3) * 0.05;
+        const color = [0x8a6a42, 0x5a3c29, 0xa51f24, 0xd8c9a8][(row + file + shelf) % 4];
+        const folder = new THREE.Mesh(
+          new THREE.BoxGeometry(0.085, height, 0.42),
+          new THREE.MeshStandardMaterial({ color, roughness: 0.82 }),
+        );
+        folder.position.set(baseX + file * 0.18 + row * 0.1, 0.7 + row * 0.38, -3.93);
+        folder.rotation.z = ((file % 3) - 1) * 0.035;
+        folder.castShadow = true;
+        folder.receiveShadow = true;
+        scene.add(folder);
+      }
+    }
+  }
 }
 
 function addLabel(_scene: THREE.Scene, _text: string, _position: [number, number, number]) {
@@ -569,18 +696,18 @@ function addCoffee(scene: THREE.Scene) {
   group.position.set(-0.62, 0.98, -1.9);
   scene.add(group);
   const cup = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.18, 0.15, 0.24, 24),
+    new THREE.CylinderGeometry(0.18, 0.15, 0.24, 40),
     new THREE.MeshStandardMaterial({ color: 0xe1d2ae, roughness: 0.55 }),
   );
   group.add(cup);
   const coffee = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.14, 0.14, 0.02, 24),
+    new THREE.CylinderGeometry(0.14, 0.14, 0.02, 40),
     new THREE.MeshStandardMaterial({ color: 0x2a1510, roughness: 0.4 }),
   );
   coffee.position.set(0, 0.13, 0);
   group.add(coffee);
   const cupMaterial = new THREE.MeshStandardMaterial({ color: 0xe1d2ae, roughness: 0.55 });
-  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.022, 10, 22), cupMaterial);
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.022, 16, 36), cupMaterial);
   handle.position.set(0.21, 0.02, 0);
   handle.scale.set(0.72, 1.22, 1);
   group.add(handle);
@@ -645,7 +772,7 @@ function addSecurityCamera(scene: THREE.Scene, position: [number, number, number
   scene.add(body);
 
   const lens = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.09, 0.09, 0.08, 16),
+    new THREE.CylinderGeometry(0.09, 0.09, 0.08, 28),
     new THREE.MeshStandardMaterial({ color: 0x65c7a2, roughness: 0.35, emissive: 0x102c24 }),
   );
   lens.position.set(
@@ -668,12 +795,22 @@ function addRedFolder(scene: THREE.Scene) {
   box(group as unknown as THREE.Scene, [0.08, 0.78, 0.52], [folderX + 0.58, 0.78, -4.8], 0x2f2018);
   const cover = box(group as unknown as THREE.Scene, [0.95, 0.08, 0.55], [folderX, 1.27, -4.78], 0xa51f24);
   const seal = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.11, 0.11, 0.035, 24),
+    new THREE.CylinderGeometry(0.11, 0.11, 0.035, 36),
     new THREE.MeshStandardMaterial({ color: 0xd8a14b, roughness: 0.4 }),
   );
   seal.position.set(folderX + 0.06, 1.33, -5.04);
   seal.rotation.x = Math.PI / 2;
   group.add(seal);
+  for (let line = 0; line < 3; line += 1) {
+    const paperLine = addShine(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.72, 0.012, 0.018),
+        new THREE.MeshStandardMaterial({ color: 0xf2e4bd, roughness: 0.82 }),
+      ),
+    );
+    paperLine.position.set(folderX, 1.32 + line * 0.011, -4.55 + line * 0.055);
+    group.add(paperLine);
+  }
   group.userData.cover = cover;
   group.userData.seal = seal;
   addLabel(scene, 'КРАСНАЯ ПАПКА', [folderX, 1.95, -4.77]);
@@ -681,12 +818,10 @@ function addRedFolder(scene: THREE.Scene) {
 }
 
 function addFlashlightModel(scene: THREE.Scene) {
-  const group = new THREE.Group();
+  const group = createFlashlightItemModel();
   group.position.set(-1.95, 0.98, -1.9);
+  group.scale.setScalar(1.15);
   scene.add(group);
-
-  box(group as unknown as THREE.Scene, [0.52, 0.12, 0.18], [0, 0, 0], 0x1b1a18);
-  box(group as unknown as THREE.Scene, [0.16, 0.15, 0.22], [-0.25, 0, 0], 0xd8a14b);
   addLabel(scene, 'ФОНАРИК', [-2.12, 1.48, -3.9]);
   return group;
 }
@@ -698,6 +833,22 @@ function addCase417(scene: THREE.Scene) {
 
   box(group as unknown as THREE.Scene, [1.05, 0.62, 0.72], [0, 0, 0], 0x9b6a38);
   box(group as unknown as THREE.Scene, [1.12, 0.08, 0.78], [0, 0.37, 0], 0xc29b63);
+  const cordMaterial = new THREE.MeshStandardMaterial({ color: 0x3a2418, roughness: 0.66 });
+  [-0.32, 0.32].forEach((x) => {
+    const cord = addShine(new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.82, 18), cordMaterial));
+    cord.position.set(x, 0.43, 0);
+    cord.rotation.x = Math.PI / 2;
+    group.add(cord);
+  });
+  const waxSeal = addShine(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(0.085, 0.085, 0.025, 36),
+      new THREE.MeshStandardMaterial({ color: 0x8b1f22, roughness: 0.5, emissive: 0x210304, emissiveIntensity: 0.16 }),
+    ),
+  );
+  waxSeal.position.set(0, 0.455, 0.18);
+  waxSeal.rotation.x = Math.PI / 2;
+  group.add(waxSeal);
   const labelCanvas = document.createElement('canvas');
   labelCanvas.width = 256;
   labelCanvas.height = 96;
@@ -715,7 +866,7 @@ function addCase417(scene: THREE.Scene) {
     context.fillText('№417', labelCanvas.width / 2, labelCanvas.height / 2);
   }
 
-  const labelTexture = new THREE.CanvasTexture(labelCanvas);
+  const labelTexture = smoothTexture(new THREE.CanvasTexture(labelCanvas));
   const label = new THREE.Mesh(
     new THREE.PlaneGeometry(0.66, 0.24),
     new THREE.MeshBasicMaterial({ map: labelTexture }),
@@ -1015,52 +1166,14 @@ function addGhostVacuumCabinet(scene: THREE.Scene) {
 }
 
 function createDroppedItemModel(item: string) {
-  const group = new THREE.Group();
-
   if (item === 'Ключ от стеклянной полки' || item === 'Оранжевый ключ') {
-    const keyColor = item === 'Оранжевый ключ' ? 0xff8a1d : 0xd8a14b;
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(0.12, 0.025, 10, 22),
-      new THREE.MeshStandardMaterial({ color: keyColor, roughness: 0.35, metalness: 0.35 }),
-    );
-    ring.rotation.x = Math.PI / 2;
-    group.add(ring);
-    box(group as unknown as THREE.Scene, [0.32, 0.035, 0.055], [0.2, 0, 0], keyColor);
-  } else if (item === 'Пылесос для привидений') {
-    const body = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.16, 0.22, 0.52, 16),
-      new THREE.MeshStandardMaterial({ color: 0x2c5f78, roughness: 0.58, metalness: 0.12 }),
-    );
-    body.rotation.z = Math.PI / 2;
-    group.add(body);
-
-    const nozzle = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.035, 0.06, 0.46, 12),
-      new THREE.MeshStandardMaterial({ color: 0xd8a14b, roughness: 0.4, metalness: 0.25 }),
-    );
-    nozzle.position.set(0, 0, -0.38);
-    nozzle.rotation.x = Math.PI / 2;
-    group.add(nozzle);
-  } else if (item === 'Фонарик') {
-    const body = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.06, 0.06, 0.44, 16),
-      new THREE.MeshStandardMaterial({ color: 0x181716, roughness: 0.48, metalness: 0.18 }),
-    );
-    body.rotation.z = Math.PI / 2;
-    group.add(body);
-
-    const head = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.105, 0.07, 0.16, 18),
-      new THREE.MeshStandardMaterial({ color: 0xd8a14b, roughness: 0.38, metalness: 0.25 }),
-    );
-    head.position.set(-0.27, 0, 0);
-    head.rotation.z = Math.PI / 2;
-    group.add(head);
-  } else {
-    box(group as unknown as THREE.Scene, [0.42, 0.06, 0.3], [0, 0, 0], 0xd8c9a8);
+    return createKeyModel(item);
   }
-
-  return group;
+  if (item === 'Пылесос для привидений') return createVacuumItemModel();
+  if (item === 'Фонарик') return createFlashlightItemModel();
+  if (item.includes('417')) return createFolderItemModel(0xd6bf88, 0x8b1f22);
+  if (item.includes('418')) return createFolderItemModel(0xd8c9a8, 0xa51f24);
+  return createFolderItemModel(0xd8c9a8, 0x5a3c29);
 }
 
 function addOutside(scene: THREE.Scene) {
@@ -1611,7 +1724,6 @@ export function ThreeArchive({
   const lampRef = useRef<THREE.PointLight | null>(null);
   const playerLightRef = useRef<THREE.PointLight | null>(null);
   const flashlightRef = useRef<THREE.SpotLight | null>(null);
-  const pixelDustRef = useRef<THREE.Points | null>(null);
   const coffeeLiquidRef = useRef<THREE.Object3D | null>(null);
   const exitDoorRef = useRef<THREE.Group | null>(null);
   const roomDoorsRef = useRef<THREE.Group[]>([]);
@@ -1683,7 +1795,7 @@ export function ThreeArchive({
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0908);
-    scene.fog = new THREE.Fog(0x0a0908, 12, 26);
+    scene.fog = new THREE.Fog(0x0a0908, 16, 34);
 
     const camera = new THREE.PerspectiveCamera(64, 16 / 9, 0.08, 100);
     camera.position.set(0, 1.3, 0);
@@ -1695,14 +1807,18 @@ export function ThreeArchive({
     firstPersonHandsRef.current = firstPersonHands;
 
     const renderer = new THREE.WebGLRenderer({
-      antialias: false,
+      antialias: true,
       powerPreference: 'high-performance',
     });
     const coarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
-    const lowPowerMode = coarsePointer || deviceMemory <= 4;
-    const minPixelRatio = lowPowerMode ? 0.62 : 0.82;
-    const maxPixelRatio = Math.min(window.devicePixelRatio || 1, lowPowerMode ? 0.9 : 1.12);
+    const forcePerformanceMode = false;
+    const lowPowerMode = forcePerformanceMode || coarsePointer || deviceMemory <= 4;
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    const minPixelRatio = lowPowerMode ? 0.75 : 1;
+    const maxPixelRatio = lowPowerMode
+      ? Math.min(devicePixelRatio, 1)
+      : Math.min(Math.max(devicePixelRatio, 1.25), 2);
     let adaptivePixelRatio = maxPixelRatio;
     const setRenderPixelRatio = (value: number) => {
       const next = THREE.MathUtils.clamp(value, minPixelRatio, maxPixelRatio);
@@ -1716,7 +1832,7 @@ export function ThreeArchive({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.42;
-    renderer.shadowMap.enabled = !lowPowerMode;
+    renderer.shadowMap.enabled = false;
     renderer.shadowMap.type = THREE.BasicShadowMap;
     mount.appendChild(renderer.domElement);
 
@@ -1743,13 +1859,13 @@ export function ThreeArchive({
     box(scene, [2.2, 1.7, 0.28], [0, 3.35, 6.7], 0x241b16);
     box(scene, [0.28, 4.2, 13.2], [-11.1, 2.1, 0], 0x241b16);
     box(scene, [0.28, 4.2, 13.2], [11.1, 2.1, 0], 0x241b16);
-    transparentBox(scene, [22.4, 0.34, 13.6], [0, 4.35, 0], 0x12100e, 0.32);
     box(scene, [0.22, 4.35, 5.75], [-3.0, 2.17, -3.825], 0x1c1511);
     box(scene, [0.22, 4.35, 5.75], [-3.0, 2.17, 3.825], 0x1c1511);
     box(scene, [0.22, 2.0, 2.35], [-3.0, 3.35, 0], 0x1c1511);
     box(scene, [0.22, 4.35, 5.75], [3.0, 2.17, -3.825], 0x1c1511);
     box(scene, [0.22, 4.35, 5.75], [3.0, 2.17, 3.825], 0x1c1511);
     box(scene, [0.22, 2.0, 2.35], [3.0, 3.35, 0], 0x1c1511);
+    addShelfFolders(scene);
     roomDoorsRef.current = [addRoomDoor(scene, -3.02, true), addRoomDoor(scene, 3.02, false)];
     addLabel(scene, 'ROOM 1', [-5.9, 2.35, -4.65]);
     addLabel(scene, 'ROOM 2', [5.9, 2.35, -4.65]);
@@ -1772,10 +1888,11 @@ export function ThreeArchive({
 
     const tableParts = addTable(scene);
     interactionObjectRefs.current.deskPapers = tableParts.papers;
-    const personalFolder = new THREE.Group();
+    const personalFolder = createFolderItemModel(0xd8c9a8, 0x5a3c29);
     personalFolder.position.set(-1.25, 0.96, -1.98);
+    personalFolder.scale.setScalar(1.55);
     scene.add(personalFolder);
-    const personalFolderCover = box(personalFolder as unknown as THREE.Scene, [0.82, 0.06, 0.44], [0, 0, 0], 0xd8c9a8);
+    const personalFolderCover = personalFolder.children.find((child) => child instanceof THREE.Mesh) ?? personalFolder;
     personalFolder.userData.cover = personalFolderCover;
     sourceItemRefs.current['Папка без номера'] = personalFolder;
     interactionObjectRefs.current.personalFolder = personalFolder;
@@ -1790,11 +1907,11 @@ export function ThreeArchive({
     addSecurityCamera(scene, [7.8, 2.65, -6.54], 0);
     addSecurityCamera(scene, [-10.94, 2.65, 4.9], Math.PI / 2);
     addSecurityCamera(scene, [10.94, 2.65, 4.9], -Math.PI / 2);
-    const emptyCase418 = new THREE.Group();
+    const emptyCase418 = createFolderItemModel(0xd8c9a8, 0xa51f24);
     emptyCase418.position.set(-7.2, 1.48, -4.02);
+    emptyCase418.scale.setScalar(1.45);
+    emptyCase418.rotation.y = 0.08;
     scene.add(emptyCase418);
-    box(emptyCase418 as unknown as THREE.Scene, [0.12, 0.48, 0.62], [0, 0, 0], 0xd8c9a8);
-    box(emptyCase418 as unknown as THREE.Scene, [0.04, 0.5, 0.64], [-0.08, 0, 0], 0xa51f24);
     sourceItemRefs.current['Пустое дело №418'] = emptyCase418;
     interactionObjectRefs.current.shelfCase = emptyCase418;
 
@@ -1835,16 +1952,16 @@ export function ThreeArchive({
     scene.add(targetGlow);
     targetGlowRef.current = targetGlow;
 
-    const ambient = new THREE.AmbientLight(0x8a7356, 0.75);
+    const ambient = new THREE.AmbientLight(0x9b8264, 0.95);
     scene.add(ambient);
 
-    const hemisphere = new THREE.HemisphereLight(0xd1b77f, 0x140f0b, 0.95);
+    const hemisphere = new THREE.HemisphereLight(0xdac390, 0x18110d, 1.12);
     scene.add(hemisphere);
 
     const lamp = new THREE.PointLight(0xd8a14b, 5.4, 13);
     lamp.position.set(-1.8, 3.2, 1.0);
-    lamp.castShadow = !lowPowerMode;
-    lamp.shadow.mapSize.set(512, 512);
+    lamp.castShadow = false;
+    lamp.shadow.mapSize.set(256, 256);
     lamp.shadow.bias = -0.0006;
     scene.add(lamp);
     lampRef.current = lamp;
@@ -1867,8 +1984,8 @@ export function ThreeArchive({
 
     const moonGlow = new THREE.DirectionalLight(0x9fb8c9, 1.2);
     moonGlow.position.set(-4, 7, 12);
-    moonGlow.castShadow = !lowPowerMode;
-    moonGlow.shadow.mapSize.set(512, 512);
+    moonGlow.castShadow = false;
+    moonGlow.shadow.mapSize.set(256, 256);
     moonGlow.shadow.camera.left = -12;
     moonGlow.shadow.camera.right = 12;
     moonGlow.shadow.camera.top = 12;
@@ -1895,10 +2012,6 @@ export function ThreeArchive({
     scene.add(flashlight);
     flashlightRef.current = flashlight;
 
-    const pixelDust = createPixelDust();
-    scene.add(pixelDust);
-    pixelDustRef.current = pixelDust;
-
     const resize = () => {
       const width = mount.clientWidth;
       const height = mount.clientHeight || width * 0.6;
@@ -1916,7 +2029,7 @@ export function ThreeArchive({
     let perfWindowStartedAt = 0;
     let perfFrameCount = 0;
     let perfElapsed = 0;
-    const frameInterval = 1000 / (lowPowerMode ? 28 : 34);
+    const frameInterval = 1000 / 30;
     const cameraGoal = new THREE.Vector3();
     const lookGoal = new THREE.Vector3();
     const animate = (timestamp = 0) => {
@@ -2251,15 +2364,6 @@ export function ThreeArchive({
               core.rotateX(Math.PI / 2);
             }
           }
-        }
-      }
-      if (pixelDustRef.current) {
-        const dust = pixelDustRef.current;
-        dust.rotation.y += 0.0009;
-        dust.rotation.x = Math.sin(frame * 0.28) * 0.012;
-        if (dust.material instanceof THREE.PointsMaterial) {
-          dust.material.opacity = lightOn ? 0.18 + Math.sin(frame * 0.8) * 0.03 : 0.3;
-          dust.material.size = lightOn ? 0.035 : 0.045;
         }
       }
       if (targetGlowRef.current) {
