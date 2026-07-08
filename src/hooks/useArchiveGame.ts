@@ -520,6 +520,8 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
   }
 
   function openCameraViewer() {
+    unlockAchievement('camera-truth');
+    finishObjective();
     return;
     playSound('camera');
     setCameraViewer({ open: true, index: 0 });
@@ -696,9 +698,8 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
     }
 
     if (closest.id === 'camera') {
-      openCameraViewer();
-      unlockAchievement('camera-truth');
-      finishObjective();
+      const cameraAction = objectiveAction(objectiveIndex, closest.id);
+      beginAction(closest.id, openCameraViewer, 2800, cameraAction.target, cameraAction.label);
       return;
     }
 
