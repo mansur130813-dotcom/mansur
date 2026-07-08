@@ -695,8 +695,7 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
     }
 
     if (closest.id === 'camera') {
-      const cameraAction = objectiveAction(objectiveIndex, closest.id);
-      beginAction(closest.id, openCameraViewer, 2800, cameraAction.target, cameraAction.label);
+      openCameraViewer();
       return;
     }
 
