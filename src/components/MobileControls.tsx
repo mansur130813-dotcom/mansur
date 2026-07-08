@@ -70,10 +70,10 @@ export function MobileControls({ onMove, onInteract, onDrop }: Props) {
 
       <div className="mobile-actions">
         <button type="button" className="mobile-action primary" onClick={onInteract} aria-label="Действие">
-          E
+          <span>Взять</span>
         </button>
         <button type="button" className="mobile-action" onClick={onDrop} aria-label="Бросить предмет">
-          Q
+          <span>Бросить</span>
         </button>
       </div>
     </div>
