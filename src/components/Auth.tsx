@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import {
-  GOOGLE_LOGIN_PENDING_KEY,
+  clearGoogleLoginPending,
   getAuthRedirectUrl,
   getOAuthErrorFromUrl,
+  markGoogleLoginPending,
 } from '../lib/authRedirect';
 import { supabase } from '../lib/supabase';
 
@@ -23,7 +24,7 @@ export function Auth({ onAuthenticated }: Props) {
     const authError = getOAuthErrorFromUrl();
 
     if (authError) {
-      sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
+      clearGoogleLoginPending();
       setMessage(authError);
     }
 
@@ -101,7 +102,7 @@ export function Auth({ onAuthenticated }: Props) {
       return;
     }
 
-    sessionStorage.setItem(GOOGLE_LOGIN_PENDING_KEY, '1');
+    markGoogleLoginPending();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -110,7 +111,7 @@ export function Auth({ onAuthenticated }: Props) {
     });
 
     if (error) {
-      sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
+      clearGoogleLoginPending();
       setMessage(error.message);
       setBusy(false);
     }

@@ -8,9 +8,10 @@ import { MobileControls } from './components/MobileControls';
 import { useArchiveGame, type GameSave, type GameSettings } from './hooks/useArchiveGame';
 import { useGameSound } from './hooks/useGameSound';
 import {
-  GOOGLE_LOGIN_PENDING_KEY,
   clearAuthCallbackUrl,
+  clearGoogleLoginPending,
   getOAuthErrorFromUrl,
+  isGoogleLoginPending,
   isAuthCallbackUrl,
 } from './lib/authRedirect';
 import { supabase } from './lib/supabase';
@@ -147,7 +148,7 @@ export default function App() {
         return;
       }
 
-      sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
+      clearGoogleLoginPending();
       await startGame(nextUser, { startSound: !auto });
     },
     [startGame],
@@ -160,7 +161,7 @@ export default function App() {
       const authError = getOAuthErrorFromUrl();
 
       if (authError) {
-        sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
+        clearGoogleLoginPending();
         clearAuthCallbackUrl();
         setSaveStatus(authError);
         return null;
@@ -173,7 +174,7 @@ export default function App() {
       clearAuthCallbackUrl();
 
       if (error) {
-        sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
+        clearGoogleLoginPending();
         setSaveStatus(`Google не завершил вход: ${error.message}`);
         return null;
       }
@@ -189,7 +190,7 @@ export default function App() {
       const sessionUser = callbackUser ?? data.session?.user ?? null;
       setUser(sessionUser);
 
-      if (sessionUser && (isOAuthReturn || sessionStorage.getItem(GOOGLE_LOGIN_PENDING_KEY) === '1')) {
+      if (sessionUser && (isOAuthReturn || isGoogleLoginPending())) {
         clearAuthCallbackUrl();
         void startAuthenticated(true, sessionUser);
       }

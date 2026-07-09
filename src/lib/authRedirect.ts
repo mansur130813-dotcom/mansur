@@ -13,6 +13,23 @@ export function getAuthRedirectUrl() {
   return `${window.location.origin}${AUTH_CALLBACK_PATH}`;
 }
 
+export function markGoogleLoginPending() {
+  sessionStorage.setItem(GOOGLE_LOGIN_PENDING_KEY, '1');
+  localStorage.setItem(GOOGLE_LOGIN_PENDING_KEY, '1');
+}
+
+export function isGoogleLoginPending() {
+  return (
+    sessionStorage.getItem(GOOGLE_LOGIN_PENDING_KEY) === '1' ||
+    localStorage.getItem(GOOGLE_LOGIN_PENDING_KEY) === '1'
+  );
+}
+
+export function clearGoogleLoginPending() {
+  sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
+  localStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
+}
+
 export function getOAuthErrorFromUrl() {
   const { searchParams, hashParams } = getAuthParams();
   const error =
