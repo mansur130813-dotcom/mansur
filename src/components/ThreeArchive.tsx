@@ -1313,22 +1313,14 @@ function createPerson(dark = false) {
   }
 
   if (dark) {
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0018, transparent: true, opacity: 1 });
-    const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x220000, transparent: true, opacity: 0.58 });
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0018, transparent: true, opacity: 0.96 });
 
     [-1, 1].forEach((side) => {
-      const eye = new THREE.Mesh(new THREE.CircleGeometry(0.046, 3), eyeMaterial);
-      eye.position.set(side * 0.072, 0.04, 0.185);
-      eye.rotation.z = side * 0.62;
-      eye.scale.set(1.45, 0.5, 1);
+      const eye = new THREE.Mesh(new THREE.CircleGeometry(0.036, 28), eyeMaterial);
+      eye.position.set(side * 0.068, 0.042, 0.185);
+      eye.scale.set(1, 1, 1);
       head.add(eye);
     });
-
-    const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.034, 3), mouthMaterial);
-    mouth.position.set(0, -0.08, 0.187);
-    mouth.rotation.z = Math.PI;
-    mouth.scale.set(0.9, 1.55, 1);
-    head.add(mouth);
   }
 
   group.add(capsule(0.06, 0.08, skin, [0, 1.13, 0]));

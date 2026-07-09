@@ -304,22 +304,21 @@ input:focus {
 }
 
 .jumpscare-eye {
-  top: 14%;
-  width: 15%;
-  height: 4.6%;
-  border-radius: 18% 78% 20% 78%;
-  background: linear-gradient(90deg, #ff0018, #ff5a24 52%, #ff0018);
-  clip-path: polygon(0 45%, 18% 12%, 100% 0, 72% 54%, 100% 100%, 16% 82%);
+  top: 13.5%;
+  width: 9.5%;
+  height: 4.4%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 52%, #050000 0 22%, #ff0018 25% 58%, #ff6a1f 62% 100%);
 }
 
 .jumpscare-eye:first-child {
-  left: 34%;
-  transform: rotate(13deg) skewX(-10deg);
+  left: 38.5%;
+  transform: scale(1.12, 1.18);
 }
 
 .jumpscare-eye:nth-child(2) {
-  right: 34%;
-  transform: rotate(-13deg) skewX(10deg) scaleX(-1);
+  right: 38.5%;
+  transform: scale(1.12, 1.18);
 }
 
 .jumpscare-mouth {
