@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react';
+﻿import { memo, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { hotspots, roomSize, type DroppedItem, type HotspotId, type Point } from '../gameData';
 
@@ -1696,7 +1696,7 @@ function createShadowSuctionEffect() {
   return group;
 }
 
-export function ThreeArchive({
+function ThreeArchiveComponent({
   player,
   lightOn,
   fear,
@@ -1806,19 +1806,19 @@ export function ThreeArchive({
     camera.add(firstPersonHands);
     firstPersonHandsRef.current = firstPersonHands;
 
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      powerPreference: 'high-performance',
-    });
     const coarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
     const forcePerformanceMode = false;
     const lowPowerMode = forcePerformanceMode || coarsePointer || deviceMemory <= 4;
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !lowPowerMode,
+      powerPreference: 'high-performance',
+    });
     const devicePixelRatio = window.devicePixelRatio || 1;
-    const minPixelRatio = lowPowerMode ? 0.75 : 1;
+    const minPixelRatio = lowPowerMode ? 0.65 : 0.9;
     const maxPixelRatio = lowPowerMode
-      ? Math.min(devicePixelRatio, 1)
-      : Math.min(Math.max(devicePixelRatio, 1.25), 2);
+      ? Math.min(devicePixelRatio, 0.95)
+      : Math.min(Math.max(devicePixelRatio, 1.15), 1.5);
     let adaptivePixelRatio = maxPixelRatio;
     const setRenderPixelRatio = (value: number) => {
       const next = THREE.MathUtils.clamp(value, minPixelRatio, maxPixelRatio);
@@ -2029,11 +2029,15 @@ export function ThreeArchive({
     let perfWindowStartedAt = 0;
     let perfFrameCount = 0;
     let perfElapsed = 0;
-    const frameInterval = 1000 / 30;
+    const frameInterval = 1000 / (lowPowerMode ? 40 : 60);
     const cameraGoal = new THREE.Vector3();
     const lookGoal = new THREE.Vector3();
     const animate = (timestamp = 0) => {
       animation = requestAnimationFrame(animate);
+      if (document.hidden) {
+        lastFrameAt = timestamp;
+        return;
+      }
       const frameDelta = lastFrameAt ? timestamp - lastFrameAt : frameInterval;
       if (frameDelta < frameInterval) return;
       lastFrameAt = timestamp;
@@ -2500,3 +2504,5 @@ export function ThreeArchive({
 
   return <div className="three-archive" ref={mountRef} />;
 }
+
+export const ThreeArchive = memo(ThreeArchiveComponent);

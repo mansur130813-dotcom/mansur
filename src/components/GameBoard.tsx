@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { roomSize, type DroppedItem, type HotspotId, type Point } from '../gameData';
 import { ThreeArchive } from './ThreeArchive';
 
@@ -40,7 +41,7 @@ type Props = {
   onViewYawChange: (yaw: number) => void;
 };
 
-export function GameBoard({
+function GameBoardComponent({
   player,
   lightOn,
   fear,
@@ -87,3 +88,5 @@ export function GameBoard({
     </section>
   );
 }
+
+export const GameBoard = memo(GameBoardComponent);

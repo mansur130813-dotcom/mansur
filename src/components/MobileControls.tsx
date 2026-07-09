@@ -29,7 +29,7 @@ export function MobileControls({ onMove, onInteract, onDrop }: Props) {
       const direction = directionRef.current;
       if (direction.power < deadZone) return;
       onMove(Math.sign(direction.x), Math.sign(direction.y));
-    }, 120);
+    }, 80);
 
     return () => window.clearInterval(timer);
   }, [onMove]);
