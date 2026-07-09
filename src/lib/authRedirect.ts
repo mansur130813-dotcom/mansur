@@ -10,7 +10,7 @@ function getAuthParams() {
 }
 
 export function getAuthRedirectUrl() {
-  return `${window.location.origin}${AUTH_CALLBACK_PATH}`;
+  return `${window.location.origin}/`;
 }
 
 export function markGoogleLoginPending() {

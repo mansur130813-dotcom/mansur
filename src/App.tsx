@@ -193,6 +193,11 @@ export default function App() {
       if (sessionUser && (isOAuthReturn || isGoogleLoginPending())) {
         clearAuthCallbackUrl();
         void startAuthenticated(true, sessionUser);
+      } else if (isOAuthReturn || isGoogleLoginPending()) {
+        clearGoogleLoginPending();
+        setSaveStatus(
+          `Google вернул на сайт, но Supabase не выдал сессию. Добавь в Supabase Auth redirect URL: ${window.location.origin}/`,
+        );
       }
     }
 
