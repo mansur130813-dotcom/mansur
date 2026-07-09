@@ -1372,27 +1372,6 @@ function createPerson(dark = false) {
     rightShoe,
   );
 
-  if (dark) {
-    const shroudMaterial = new THREE.MeshStandardMaterial({
-      color: 0xdbe7ee,
-      emissive: 0x91b6c8,
-      emissiveIntensity: 0.22,
-      roughness: 0.9,
-      transparent: true,
-      opacity: 0.38,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    });
-    const shroud = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.02, 28, 1, true), shroudMaterial);
-    shroud.position.set(0, 0.38, 0);
-    shroud.rotation.y = Math.PI / 28;
-    group.add(shroud);
-
-    const glow = new THREE.PointLight(0xaed8e6, 0.42, 1.8);
-    glow.position.set(0, 0.92, 0.04);
-    group.add(glow);
-  }
-
   group.userData.parts = {
     head,
     torso,
