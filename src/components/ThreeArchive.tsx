@@ -1806,23 +1806,18 @@ function ThreeArchiveComponent({
     camera.add(firstPersonHands);
     firstPersonHandsRef.current = firstPersonHands;
 
-    const coarsePointer = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-    const smallScreen = Math.min(window.innerWidth, window.innerHeight) < 760;
     const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
     const forcePerformanceMode = false;
     const weakDeviceMode = forcePerformanceMode || deviceMemory <= 4;
-    const mobileBalancedMode = !weakDeviceMode && (coarsePointer || smallScreen);
-    const lowPowerMode = weakDeviceMode || mobileBalancedMode;
+    const lowPowerMode = weakDeviceMode;
     const renderer = new THREE.WebGLRenderer({
       antialias: !lowPowerMode,
       powerPreference: 'high-performance',
     });
     const devicePixelRatio = window.devicePixelRatio || 1;
-    const minPixelRatio = weakDeviceMode ? 0.6 : mobileBalancedMode ? 0.85 : 0.9;
+    const minPixelRatio = weakDeviceMode ? 0.6 : 0.9;
     const maxPixelRatio = weakDeviceMode
       ? Math.min(devicePixelRatio, 0.85)
-      : mobileBalancedMode
-      ? Math.min(devicePixelRatio, 1.1)
       : Math.min(Math.max(devicePixelRatio, 1.15), 1.5);
     let adaptivePixelRatio = maxPixelRatio;
     const setRenderPixelRatio = (value: number) => {
@@ -2034,7 +2029,7 @@ function ThreeArchiveComponent({
     let perfWindowStartedAt = 0;
     let perfFrameCount = 0;
     let perfElapsed = 0;
-    const frameInterval = 1000 / (weakDeviceMode ? 35 : mobileBalancedMode ? 45 : 60);
+    const frameInterval = 1000 / (weakDeviceMode ? 35 : 60);
     const cameraGoal = new THREE.Vector3();
     const lookGoal = new THREE.Vector3();
     const animate = (timestamp = 0) => {
