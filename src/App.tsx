@@ -182,12 +182,15 @@ export default function App() {
     }
 
     async function restoreSession() {
-      const callbackUser = isAuthCallbackUrl() ? await finishOAuthRedirect() : null;
+      const isOAuthReturn = isAuthCallbackUrl();
+      const callbackUser = isOAuthReturn ? await finishOAuthRedirect() : null;
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
       const sessionUser = callbackUser ?? data.session?.user ?? null;
       setUser(sessionUser);
-      if (sessionUser && sessionStorage.getItem(GOOGLE_LOGIN_PENDING_KEY) === '1') {
+
+      if (sessionUser && (isOAuthReturn || sessionStorage.getItem(GOOGLE_LOGIN_PENDING_KEY) === '1')) {
+        clearAuthCallbackUrl();
         void startAuthenticated(true, sessionUser);
       }
     }
