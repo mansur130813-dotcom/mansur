@@ -304,47 +304,56 @@ input:focus {
 }
 
 .jumpscare-eye {
-  top: 15%;
-  width: 11%;
-  height: 3.8%;
-  border-radius: 50%;
-  background: #ff1f2d;
+  top: 14%;
+  width: 15%;
+  height: 4.6%;
+  border-radius: 18% 78% 20% 78%;
+  background: linear-gradient(90deg, #ff0018, #ff5a24 52%, #ff0018);
+  clip-path: polygon(0 45%, 18% 12%, 100% 0, 72% 54%, 100% 100%, 16% 82%);
 }
 
 .jumpscare-eye:first-child {
-  left: 39%;
-  transform: rotate(4deg) skewX(-8deg);
+  left: 34%;
+  transform: rotate(13deg) skewX(-10deg);
 }
 
 .jumpscare-eye:nth-child(2) {
-  right: 39%;
-  transform: rotate(-4deg) skewX(8deg);
+  right: 34%;
+  transform: rotate(-13deg) skewX(10deg) scaleX(-1);
 }
 
 .jumpscare-mouth {
-  left: 46%;
-  top: 20%;
-  width: 8%;
-  height: 3.2%;
-  border-radius: 50%;
-  background: rgba(109, 8, 13, 0.5);
-  transform: scaleY(1.8);
-  box-shadow: 0 0 20px rgba(255, 31, 45, 0.35);
+  left: 35%;
+  top: 22%;
+  width: 30%;
+  height: 13%;
+  border: 3px solid rgba(255, 31, 45, 0.68);
+  border-top-width: 1px;
+  border-radius: 28% 28% 56% 56% / 20% 20% 90% 90%;
+  background: radial-gradient(ellipse at 50% 62%, #010000 0 48%, #3f0006 62%, #010000 100%);
+  clip-path: polygon(0 30%, 10% 18%, 25% 27%, 38% 12%, 52% 28%, 66% 10%, 82% 24%, 100% 16%, 92% 68%, 72% 94%, 50% 82%, 29% 96%, 8% 70%);
+  transform: rotate(1deg);
+  box-shadow: inset 0 16px 0 rgba(255, 31, 45, 0.12), 0 0 34px rgba(255, 31, 45, 0.5);
 }
 
 .jumpscare-mouth::before,
 .jumpscare-mouth::after {
-  display: none;
+  content: "";
+  position: absolute;
+  left: 9%;
+  width: 82%;
+  height: 42%;
+  background: rgba(255, 245, 230, 0.92);
 }
 
 .jumpscare-mouth::before {
-  top: 3%;
-  clip-path: polygon(0 0, 24% 0, 30% 84%, 39% 0, 61% 0, 69% 88%, 76% 0, 100% 0, 100% 16%, 0 16%);
+  top: 2%;
+  clip-path: polygon(0 0, 15% 0, 20% 75%, 31% 0, 46% 0, 52% 88%, 64% 0, 80% 0, 86% 78%, 100% 0, 100% 18%, 0 18%);
 }
 
 .jumpscare-mouth::after {
   bottom: 2%;
-  clip-path: polygon(0 84%, 34% 84%, 39% 34%, 45% 84%, 57% 84%, 63% 32%, 68% 84%, 100% 84%, 100% 100%, 0 100%);
+  clip-path: polygon(0 82%, 16% 82%, 21% 28%, 31% 82%, 45% 82%, 51% 18%, 61% 82%, 76% 82%, 83% 30%, 100% 82%, 100% 100%, 0 100%);
 }
 
 .ending-card h1 {

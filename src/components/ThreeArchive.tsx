@@ -1274,19 +1274,26 @@ function createPalm(material: THREE.Material, side: -1 | 1, scale = 1) {
 function createPerson(dark = false) {
   const group = new THREE.Group();
   const makePersonMaterial = (color: number, roughness: number, emissive = 0x000000) =>
-    new THREE.MeshStandardMaterial({
-      color,
-      roughness,
-      emissive,
-      transparent: dark,
-      opacity: dark ? 0.34 : 1,
-      depthWrite: !dark,
-    });
-  const skin = dark ? 0x030405 : 0xc89f79;
-  const coat = dark ? 0x050608 : 0x315783;
-  const pants = dark ? 0x030405 : 0x2b2f3a;
-  const shoes = dark ? 0x020202 : 0x0c0b0a;
-  const badge = dark ? 0x111820 : 0xf1ddb0;
+    dark
+      ? new THREE.MeshBasicMaterial({
+          color: 0x000000,
+          transparent: true,
+          opacity: 0.52,
+          depthWrite: false,
+        })
+      : new THREE.MeshStandardMaterial({
+          color,
+          roughness,
+          emissive,
+          transparent: false,
+          opacity: 1,
+          depthWrite: true,
+        });
+  const skin = dark ? 0x000000 : 0xc89f79;
+  const coat = dark ? 0x000000 : 0x315783;
+  const pants = dark ? 0x000000 : 0x2b2f3a;
+  const shoes = dark ? 0x000000 : 0x0c0b0a;
+  const badge = dark ? 0x000000 : 0xf1ddb0;
 
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(0.18, 24, 18),
@@ -1306,19 +1313,21 @@ function createPerson(dark = false) {
   }
 
   if (dark) {
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xff1f2d, transparent: true, opacity: 0.92 });
-    const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x6d080d, transparent: true, opacity: 0.3 });
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0018, transparent: true, opacity: 1 });
+    const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x220000, transparent: true, opacity: 0.58 });
 
     [-1, 1].forEach((side) => {
-      const eye = new THREE.Mesh(new THREE.CircleGeometry(0.032, 18), eyeMaterial);
-      eye.position.set(side * 0.066, 0.035, 0.185);
-      eye.scale.set(0.74, 1.05, 1);
+      const eye = new THREE.Mesh(new THREE.CircleGeometry(0.046, 3), eyeMaterial);
+      eye.position.set(side * 0.072, 0.04, 0.185);
+      eye.rotation.z = side * 0.62;
+      eye.scale.set(1.45, 0.5, 1);
       head.add(eye);
     });
 
-    const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.026, 18), mouthMaterial);
-    mouth.position.set(0, -0.072, 0.187);
-    mouth.scale.set(0.72, 1.35, 1);
+    const mouth = new THREE.Mesh(new THREE.CircleGeometry(0.034, 3), mouthMaterial);
+    mouth.position.set(0, -0.08, 0.187);
+    mouth.rotation.z = Math.PI;
+    mouth.scale.set(0.9, 1.55, 1);
     head.add(mouth);
   }
 
