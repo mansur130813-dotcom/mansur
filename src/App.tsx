@@ -32,21 +32,15 @@ const defaultSettings: GameSettings = {
   aiNotesEnabled: true,
 };
 
-function isGoogleUser(user: User | null) {
-  return Boolean(
-    user?.app_metadata?.provider === 'google' ||
-      user?.identities?.some((identity) => identity.provider === 'google'),
-  );
-}
-
 export default function App() {
   const [started, setStarted] = useState(false);
   const startedRef = useRef(false);
   const [user, setUser] = useState<User | null>(null);
+  const [authenticatedChoiceUser, setAuthenticatedChoiceUser] = useState<User | null>(null);
   const [initialSave, setInitialSave] = useState<GameSave | null>(null);
   const [saveStatus, setSaveStatus] = useState('Гость: прогресс хранится только до перезапуска.');
   const sound = useGameSound();
-  const googleSaveEnabled = isGoogleUser(user);
+  const cloudSaveEnabled = Boolean(user);
   const game = useArchiveGame({
     active: started,
     playSound: sound.play,
@@ -112,13 +106,14 @@ export default function App() {
   }, []);
 
   const startGame = useCallback(
-    async (nextUser: User | null = user, options: { startSound?: boolean } = {}) => {
+    async (nextUser: User | null = user, options: { startSound?: boolean; loadSave?: boolean } = {}) => {
       if (startedRef.current) return;
       startedRef.current = true;
+      setAuthenticatedChoiceUser(null);
 
       if (options.startSound !== false) sound.start();
 
-      if (isGoogleUser(nextUser) && nextUser) {
+      if (nextUser && options.loadSave !== false) {
         const save = await loadGoogleSave(nextUser);
         setInitialSave(save);
       } else if (nextUser) {
@@ -149,10 +144,21 @@ export default function App() {
       }
 
       clearGoogleLoginPending();
-      await startGame(nextUser, { startSound: !auto });
+      setAuthenticatedChoiceUser(nextUser);
+      setSaveStatus(auto ? 'Вход выполнен. Выбери продолжение или новую игру.' : 'Вход выполнен. Можно продолжить сохранение или начать заново.');
     },
-    [startGame],
+    [],
   );
+
+  const continueAuthenticatedGame = useCallback(() => {
+    if (!authenticatedChoiceUser) return;
+    void startGame(authenticatedChoiceUser, { startSound: true, loadSave: true });
+  }, [authenticatedChoiceUser, startGame]);
+
+  const startAuthenticatedNewGame = useCallback(() => {
+    if (!authenticatedChoiceUser) return;
+    void startGame(authenticatedChoiceUser, { startSound: true, loadSave: false });
+  }, [authenticatedChoiceUser, startGame]);
 
   useEffect(() => {
     let mounted = true;
@@ -207,7 +213,7 @@ export default function App() {
       const sessionUser = session?.user ?? null;
       setUser(sessionUser);
 
-      if (sessionUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+      if (sessionUser && event === 'SIGNED_IN' && (isAuthCallbackUrl() || isGoogleLoginPending())) {
         clearAuthCallbackUrl();
         void startAuthenticated(true, sessionUser);
       }
@@ -225,7 +231,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!started || !googleSaveEnabled || !user) return undefined;
+    if (!started || !cloudSaveEnabled || !user) return undefined;
 
     const timer = window.setTimeout(async () => {
       const { error } = await supabase.from('game_saves').upsert({
@@ -238,17 +244,20 @@ export default function App() {
     }, 4500);
 
     return () => window.clearTimeout(timer);
-  }, [googleSaveEnabled, googleSaveKey, started, user]);
+  }, [cloudSaveEnabled, googleSaveKey, started, user]);
 
   if (!started) {
     return (
       <MenuScreen
         soundEnabled={sound.enabled}
         saveStatus={saveStatus}
+        authenticatedUser={authenticatedChoiceUser}
         achievements={game.achievements}
         allAchievements={game.allAchievements}
         onGuestStart={() => void startGame(null, { startSound: true })}
         onAuthenticated={(auto, nextUser) => void startAuthenticated(Boolean(auto), nextUser)}
+        onContinueGame={continueAuthenticatedGame}
+        onNewGame={startAuthenticatedNewGame}
         onToggleSound={toggleSound}
       />
     );

@@ -313,6 +313,7 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
   const moveRef = useRef<(dx: number, dy: number) => void>(() => {});
   const interactRef = useRef<() => void>(() => {});
   const dropInventoryRef = useRef<() => void>(() => {});
+  const pressedMoveKeysRef = useRef(new Map<string, [number, number]>());
 
   const objective = objectives[objectiveIndex] ?? objectives[objectives.length - 1];
   const finalMode = objectiveIndex === objectives.length;
@@ -1056,6 +1057,76 @@ export function useArchiveGame({ active, playSound, initialSave, settings = defa
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    const keys: Record<string, [number, number]> = {
+      ArrowUp: [0, -1],
+      w: [0, -1],
+      W: [0, -1],
+      ArrowDown: [0, 1],
+      s: [0, 1],
+      S: [0, 1],
+      ArrowLeft: [-1, 0],
+      a: [-1, 0],
+      A: [-1, 0],
+      ArrowRight: [1, 0],
+      d: [1, 0],
+      D: [1, 0],
+    };
+    const codeKeys: Record<string, [number, number]> = {
+      ArrowUp: [0, -1],
+      KeyW: [0, -1],
+      ArrowDown: [0, 1],
+      KeyS: [0, 1],
+      ArrowLeft: [-1, 0],
+      KeyA: [-1, 0],
+      ArrowRight: [1, 0],
+      KeyD: [1, 0],
+    };
+
+    const moveHeldDirection = () => {
+      let dx = 0;
+      let dy = 0;
+      pressedMoveKeysRef.current.forEach(([keyDx, keyDy]) => {
+        dx += keyDx;
+        dy += keyDy;
+      });
+      dx = Math.sign(dx);
+      dy = Math.sign(dy);
+      if (dx || dy) moveRef.current(dx, dy);
+    };
+
+    function onKeyDown(event: KeyboardEvent) {
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+        return;
+      }
+
+      const direction = keys[event.key] ?? codeKeys[event.code];
+      if (!direction) return;
+      event.preventDefault();
+      pressedMoveKeysRef.current.set(event.code || event.key, direction);
+    }
+
+    function onKeyUp(event: KeyboardEvent) {
+      if (keys[event.key] || codeKeys[event.code]) pressedMoveKeysRef.current.delete(event.code || event.key);
+    }
+
+    function clearPressedKeys() {
+      pressedMoveKeysRef.current.clear();
+    }
+
+    const timer = window.setInterval(moveHeldDirection, moveCooldownMs + 8);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', clearPressedKeys);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', clearPressedKeys);
+    };
   }, []);
 
   useEffect(

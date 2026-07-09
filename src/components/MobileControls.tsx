@@ -22,17 +22,22 @@ function clampStick(dx: number, dy: number) {
 export function MobileControls({ onMove, onInteract, onDrop }: Props) {
   const padRef = useRef<HTMLDivElement | null>(null);
   const directionRef = useRef({ x: 0, y: 0, power: 0 });
+  const onMoveRef = useRef(onMove);
   const [thumb, setThumb] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    onMoveRef.current = onMove;
+  }, [onMove]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       const direction = directionRef.current;
       if (direction.power < deadZone) return;
-      onMove(Math.sign(direction.x), Math.sign(direction.y));
-    }, 80);
+      onMoveRef.current(Math.sign(direction.x), Math.sign(direction.y));
+    }, 108);
 
     return () => window.clearInterval(timer);
-  }, [onMove]);
+  }, []);
 
   function updateStick(clientX: number, clientY: number) {
     const pad = padRef.current;

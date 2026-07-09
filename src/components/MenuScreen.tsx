@@ -6,20 +6,26 @@ import { Auth } from './Auth';
 type Props = {
   soundEnabled: boolean;
   saveStatus: string;
+  authenticatedUser: User | null;
   achievements: Achievement[];
   allAchievements: Achievement[];
   onGuestStart: () => void;
   onAuthenticated: (auto?: boolean, user?: User | null) => void;
+  onContinueGame: () => void;
+  onNewGame: () => void;
   onToggleSound: () => void;
 };
 
 export function MenuScreen({
   soundEnabled,
   saveStatus,
+  authenticatedUser,
   achievements,
   allAchievements,
   onGuestStart,
   onAuthenticated,
+  onContinueGame,
+  onNewGame,
   onToggleSound,
 }: Props) {
   const [showInfo, setShowInfo] = useState(false);
@@ -38,13 +44,28 @@ export function MenuScreen({
           <Auth onAuthenticated={onAuthenticated} />
 
           <section className="guest-panel">
-            <h2>Быстрый вход</h2>
-            <p>Можно играть без аккаунта. Прогресс гостя не привязан к email.</p>
+            <h2>{authenticatedUser ? 'Игра' : 'Быстрый вход'}</h2>
+            {authenticatedUser ? (
+              <p>Вход выполнен: {authenticatedUser.email ?? 'аккаунт'}. Выбери, что делать дальше.</p>
+            ) : (
+              <p>Можно играть без аккаунта. Прогресс гостя не привязан к email.</p>
+            )}
             <p className="save-note">{saveStatus}</p>
             <div className="menu-actions">
-              <button type="button" onClick={onGuestStart}>
-                Играть как гость
-              </button>
+              {authenticatedUser ? (
+                <>
+                  <button type="button" onClick={onContinueGame}>
+                    Продолжить
+                  </button>
+                  <button type="button" className="quiet-button" onClick={onNewGame}>
+                    Новая игра
+                  </button>
+                </>
+              ) : (
+                <button type="button" onClick={onGuestStart}>
+                  Играть как гость
+                </button>
+              )}
               <button type="button" className="quiet-button" onClick={onToggleSound}>
                 Звук: {soundEnabled ? 'вкл' : 'выкл'}
               </button>
@@ -78,12 +99,12 @@ export function MenuScreen({
           <section className="game-info">
             <h2>Сведения об игре</h2>
             <p>
-              Управление: WASD для движения, мышь для поворота камеры, E для действия.
-              Подходи к предметам, выполняй задания, смотри мониторы камер и следи за страхом.
+              Управление: WASD для движения, мышь для поворота камеры, E для действия. Подходи к предметам,
+              выполняй задания, смотри мониторы камер и следи за страхом.
             </p>
             <p>
-              Телефон: слева виртуальный стик для движения, свайп по экрану поворачивает камеру. Справа большая кнопка
-              «Взять» для действия и маленькая «Бросить» для предмета в руке.
+              Телефон: слева виртуальный стик для движения, свайп по экрану поворачивает камеру. Справа большая
+              кнопка «Взять» для действия и маленькая «Бросить» для предмета в руке.
             </p>
             <p>Камеры: проверь все варианты на мониторе. Только одна камера показывает правильную запись.</p>
             <p>Концовки: плохая концовка связана с красной папкой. Хорошая концовка - побег через белые ворота.</p>

@@ -20,29 +20,13 @@ export function Auth({ onAuthenticated }: Props) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
     const authError = getOAuthErrorFromUrl();
 
     if (authError) {
       clearGoogleLoginPending();
       setMessage(authError);
     }
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted && data.session) onAuthenticated(true, data.session.user);
-    });
-
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-        onAuthenticated(true, session.user);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      data.subscription.unsubscribe();
-    };
-  }, [onAuthenticated]);
+  }, []);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
