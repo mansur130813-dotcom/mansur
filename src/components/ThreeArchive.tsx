@@ -1306,8 +1306,8 @@ function createPerson(dark = false) {
   }
 
   if (dark) {
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xeafaff, transparent: true, opacity: 0.9 });
-    const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x9db4c0, transparent: true, opacity: 0.34 });
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xff1f2d, transparent: true, opacity: 0.92 });
+    const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x6d080d, transparent: true, opacity: 0.3 });
 
     [-1, 1].forEach((side) => {
       const eye = new THREE.Mesh(new THREE.CircleGeometry(0.032, 18), eyeMaterial);
