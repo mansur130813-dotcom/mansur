@@ -1279,14 +1279,14 @@ function createPerson(dark = false) {
       roughness,
       emissive,
       transparent: dark,
-      opacity: dark ? 0.58 : 1,
+      opacity: dark ? 0.34 : 1,
       depthWrite: !dark,
     });
-  const skin = dark ? 0xdde8ee : 0xc89f79;
-  const coat = dark ? 0xcfdce5 : 0x315783;
-  const pants = dark ? 0xb7c7d2 : 0x2b2f3a;
-  const shoes = dark ? 0x9fb1bd : 0x0c0b0a;
-  const badge = dark ? 0xeaf4f8 : 0xf1ddb0;
+  const skin = dark ? 0x030405 : 0xc89f79;
+  const coat = dark ? 0x050608 : 0x315783;
+  const pants = dark ? 0x030405 : 0x2b2f3a;
+  const shoes = dark ? 0x020202 : 0x0c0b0a;
+  const badge = dark ? 0x111820 : 0xf1ddb0;
 
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(0.18, 24, 18),
@@ -1306,8 +1306,8 @@ function createPerson(dark = false) {
   }
 
   if (dark) {
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xeafaff, transparent: true, opacity: 0.86 });
-    const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x6e8994, transparent: true, opacity: 0.62 });
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xeafaff, transparent: true, opacity: 0.9 });
+    const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x9db4c0, transparent: true, opacity: 0.34 });
 
     [-1, 1].forEach((side) => {
       const eye = new THREE.Mesh(new THREE.CircleGeometry(0.032, 18), eyeMaterial);
