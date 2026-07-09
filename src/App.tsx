@@ -7,9 +7,13 @@ import { MenuScreen } from './components/MenuScreen';
 import { MobileControls } from './components/MobileControls';
 import { useArchiveGame, type GameSave, type GameSettings } from './hooks/useArchiveGame';
 import { useGameSound } from './hooks/useGameSound';
+import {
+  GOOGLE_LOGIN_PENDING_KEY,
+  clearAuthCallbackUrl,
+  getOAuthErrorFromUrl,
+  isAuthCallbackUrl,
+} from './lib/authRedirect';
 import { supabase } from './lib/supabase';
-
-const GOOGLE_LOGIN_PENDING_KEY = 'archive_google_login_pending';
 
 const finalObjective = {
   night: 'Финал',
@@ -152,20 +156,50 @@ export default function App() {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    async function finishOAuthRedirect() {
+      const authError = getOAuthErrorFromUrl();
+
+      if (authError) {
+        sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
+        clearAuthCallbackUrl();
+        setSaveStatus(authError);
+        return null;
+      }
+
+      const code = new URLSearchParams(window.location.search).get('code');
+      if (!code) return null;
+
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      clearAuthCallbackUrl();
+
+      if (error) {
+        sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
+        setSaveStatus(`Google не завершил вход: ${error.message}`);
+        return null;
+      }
+
+      return data.session?.user ?? null;
+    }
+
+    async function restoreSession() {
+      const callbackUser = isAuthCallbackUrl() ? await finishOAuthRedirect() : null;
+      const { data } = await supabase.auth.getSession();
       if (!mounted) return;
-      const sessionUser = data.session?.user ?? null;
+      const sessionUser = callbackUser ?? data.session?.user ?? null;
       setUser(sessionUser);
       if (sessionUser && sessionStorage.getItem(GOOGLE_LOGIN_PENDING_KEY) === '1') {
         void startAuthenticated(true, sessionUser);
       }
-    });
+    }
+
+    void restoreSession();
 
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       const sessionUser = session?.user ?? null;
       setUser(sessionUser);
 
       if (sessionUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        clearAuthCallbackUrl();
         void startAuthenticated(true, sessionUser);
       }
     });

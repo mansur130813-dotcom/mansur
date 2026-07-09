@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
+import {
+  GOOGLE_LOGIN_PENDING_KEY,
+  getAuthRedirectUrl,
+  getOAuthErrorFromUrl,
+} from '../lib/authRedirect';
 import { supabase } from '../lib/supabase';
-
-const GOOGLE_LOGIN_PENDING_KEY = 'archive_google_login_pending';
 
 type Props = {
   onAuthenticated: (auto?: boolean, user?: User | null) => void;
 };
-
-function getAuthRedirectUrl() {
-  return `${window.location.origin}${window.location.pathname}`;
-}
 
 export function Auth({ onAuthenticated }: Props) {
   const [email, setEmail] = useState('');
@@ -21,6 +20,12 @@ export function Auth({ onAuthenticated }: Props) {
 
   useEffect(() => {
     let mounted = true;
+    const authError = getOAuthErrorFromUrl();
+
+    if (authError) {
+      sessionStorage.removeItem(GOOGLE_LOGIN_PENDING_KEY);
+      setMessage(authError);
+    }
 
     supabase.auth.getSession().then(({ data }) => {
       if (mounted && data.session) onAuthenticated(true, data.session.user);
