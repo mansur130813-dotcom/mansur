@@ -14,10 +14,10 @@ import {
 import type { SoundCue } from './useGameSound';
 
 const startPoint: Point = { x: 450, y: 470 };
-const step = 24;
+const step = 16;
 const reach = 72;
 const playerRadius = 10;
-const moveCooldownMs = 95;
+const moveCooldownMs = 115;
 const shadowAttackStep = 34;
 const shadowAttackIntervalMs = 220;
 const indoorMin = 28;
