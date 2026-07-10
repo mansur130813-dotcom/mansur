@@ -8,6 +8,7 @@ type Props = {
 
 const stickRadius = 58;
 const deadZone = 0.24;
+const moveIntervalMs = 100;
 
 function clampStick(dx: number, dy: number) {
   const distance = Math.hypot(dx, dy);
@@ -19,8 +20,17 @@ function clampStick(dx: number, dy: number) {
   };
 }
 
+function getMoveDirection(x: number, y: number) {
+  const horizontal = Math.abs(x);
+  const vertical = Math.abs(y);
+  if (horizontal > vertical * 1.5) return { dx: Math.sign(x), dy: 0 };
+  if (vertical > horizontal * 1.5) return { dx: 0, dy: Math.sign(y) };
+  return { dx: Math.sign(x), dy: Math.sign(y) };
+}
+
 export function MobileControls({ onMove, onInteract, onDrop }: Props) {
   const padRef = useRef<HTMLDivElement | null>(null);
+  const activePointerRef = useRef<number | null>(null);
   const directionRef = useRef({ x: 0, y: 0, power: 0 });
   const onMoveRef = useRef(onMove);
   const [thumb, setThumb] = useState({ x: 0, y: 0 });
@@ -33,8 +43,9 @@ export function MobileControls({ onMove, onInteract, onDrop }: Props) {
     const timer = window.setInterval(() => {
       const direction = directionRef.current;
       if (direction.power < deadZone) return;
-      onMoveRef.current(Math.sign(direction.x), Math.sign(direction.y));
-    }, 108);
+      const { dx, dy } = getMoveDirection(direction.x, direction.y);
+      onMoveRef.current(dx, dy);
+    }, moveIntervalMs);
 
     return () => window.clearInterval(timer);
   }, []);
@@ -51,6 +62,7 @@ export function MobileControls({ onMove, onInteract, onDrop }: Props) {
   }
 
   function resetStick() {
+    activePointerRef.current = null;
     directionRef.current = { x: 0, y: 0, power: 0 };
     setThumb({ x: 0, y: 0 });
   }
@@ -61,12 +73,19 @@ export function MobileControls({ onMove, onInteract, onDrop }: Props) {
         ref={padRef}
         className="mobile-stick"
         onPointerDown={(event) => {
+          activePointerRef.current = event.pointerId;
           event.currentTarget.setPointerCapture(event.pointerId);
           updateStick(event.clientX, event.clientY);
         }}
-        onPointerMove={(event) => updateStick(event.clientX, event.clientY)}
-        onPointerUp={resetStick}
-        onPointerCancel={resetStick}
+        onPointerMove={(event) => {
+          if (activePointerRef.current === event.pointerId) updateStick(event.clientX, event.clientY);
+        }}
+        onPointerUp={(event) => {
+          if (activePointerRef.current === event.pointerId) resetStick();
+        }}
+        onPointerCancel={(event) => {
+          if (activePointerRef.current === event.pointerId) resetStick();
+        }}
         role="application"
         aria-label="Движение"
       >
