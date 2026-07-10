@@ -201,6 +201,7 @@ input:focus {
   inset: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: #050403;
 }
@@ -1382,6 +1383,37 @@ input:focus {
     top: 54px;
     bottom: auto;
     max-height: 32vh;
+  }
+
+  .camera-hud-open {
+    top: max(52px, env(safe-area-inset-top));
+    bottom: max(150px, calc(136px + env(safe-area-inset-bottom)));
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  .camera-hud-open .camera-viewer {
+    padding: 10px;
+  }
+
+  .camera-hud-open .camera-feed {
+    min-height: 86px;
+    padding: 10px;
+  }
+
+  .camera-hud-open .camera-feed strong {
+    margin-bottom: 6px;
+  }
+
+  .camera-hud-open .camera-actions {
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .camera-hud-open .camera-actions button {
+    min-height: 38px;
+    padding: 7px 8px;
+    font-size: 12px;
   }
 
   .mobile-controls {

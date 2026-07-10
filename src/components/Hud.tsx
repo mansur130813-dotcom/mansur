@@ -36,7 +36,7 @@ export function Hud({
       </section>
 
       {(action || (cameraViewer.open && feed)) && (
-        <aside className="hud camera-hud">
+        <aside className={`hud camera-hud ${cameraViewer.open ? 'camera-hud-open' : ''}`}>
           {action && (
             <section className="panel action-panel">
               <h2>Действие</h2>
